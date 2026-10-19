@@ -1,0 +1,2638 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#0b1020"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111a31'/><text x='50' y='72' font-size='68' text-anchor='middle' fill='%23ffb31f'>♜</text></svg>"><title>Chess Walls</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;background:#0b1020;color:#eef3ff;font:15px system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center;min-height:100vh;overscroll-behavior:none;user-select:none}.app{width:min(920px,100%);padding:14px;min-width:0;max-width:100%}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap}.top-actions{display:flex;gap:6px;flex-wrap:wrap}.brand{font-size:22px;font-weight:800;letter-spacing:.4px;display:flex;align-items:center;gap:6px}.net-pill{font-size:11px;padding:2px 7px;border-radius:99px;background:#1b3b2b;color:#42f59b;border:1px solid #2b6e4c;font-weight:700}.sub{color:#91a1c6;font-size:12px;display:none}@media(min-width:540px){.sub{display:block}}.layout{display:grid;grid-template-columns:minmax(0,560px) minmax(0,260px);gap:14px;align-items:start}.layout>*,.panel,.history-box{min-width:0}.board-wrap{position:relative;background:#111a31;padding:8px;border-radius:14px;box-shadow:0 14px 40px #0006;max-width:100%}.board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));aspect-ratio:1;border-radius:8px;overflow:hidden;touch-action:none;isolation:isolate;max-width:100%;position:relative;contain:layout paint}.cell{position:relative;width:100%;height:100%;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;font-size:clamp(24px,6.2vw,46px);cursor:pointer;user-select:none;transition:box-shadow .14s ease,background-color .14s ease}.cell.light{background:#d7e0ef}.cell.dark{background:#65799d}.cell.selected{outline:4px solid #ffb31f;outline-offset:-4px}.cell.last-from{background:#c99732!important}.cell.last-to{background:#54b9c8!important;box-shadow:inset 0 0 0 4px #a8f1ff}.cell.target{box-shadow:inset 0 0 0 5px #54d6ff}.cell.target::after{content:"";width:24%;height:24%;border-radius:50%;background:#111a3155;pointer-events:none}.cell.in-check{background:radial-gradient(circle,#ff4d4d 20%,#b31b1b 90%)!important;box-shadow:inset 0 0 12px #ff0000;animation:checkPulse 1s infinite alternate}@keyframes checkPulse{from{filter:brightness(1)}to{filter:brightness(1.22)}}.coord{position:absolute;font-size:10px;font-weight:700;line-height:1;pointer-events:none;opacity:.75}.cell.light .coord{color:#415375}.cell.dark .coord{color:#d7e0ef}.coord-r{top:2px;left:3px}.coord-c{bottom:2px;right:3px}.piece{filter:drop-shadow(0 2px 2px #0008);line-height:1;pointer-events:none;z-index:2;will-change:transform}.white{color:#fff}.black{color:#161a28}
+
+.wall{position:absolute;background:#ff9d1f;border-radius:5px;z-index:10;box-shadow:0 0 10px #ff9d1f88;pointer-events:none;will-change:transform,opacity;transition:transform .14s ease,filter .14s ease,background-color .14s ease}
+.wall.h{height:8px;transform:translateY(-50%)}
+.wall.v{width:8px;transform:translateX(-50%)}
+.wall.long{background:#54d6ff;box-shadow:0 0 10px #54d6ff99}
+.wall.owner-b{background:#9b6cff;box-shadow:0 0 10px #9b6cff99}
+.wall.owner-b.long{background:#d08cff;box-shadow:0 0 10px #d08cff99}
+.wall.owner-w{background:#ff9d1f;box-shadow:0 0 10px #ff9d1f99}
+.wall.owner-w.long{background:#54d6ff;box-shadow:0 0 10px #54d6ff99}
+.wall.preview{opacity:.82;z-index:12;outline:2px dashed #fff!important}
+.wall.preview.valid{background:#34e87f!important;box-shadow:0 0 12px #34e87fcc!important}
+.wall.preview.invalid{background:#ff4b5c!important;box-shadow:0 0 12px #ff4b5ccc!important}
+.wall.breakable{pointer-events:auto;cursor:pointer}
+.wall.breakable::after{content:"";position:absolute;inset:-8px}
+.wall.breakable.h:hover{transform:translateY(-50%) scale(1.22);filter:brightness(1.3);background:#ff4b5c!important;box-shadow:0 0 14px #ff4b5c!important}
+.wall.breakable.v:hover{transform:translateX(-50%) scale(1.22);filter:brightness(1.3);background:#ff4b5c!important;box-shadow:0 0 14px #ff4b5c!important}
+.wall.shatter{background:#ff3b4e!important;box-shadow:0 0 18px #ff3b4e!important;z-index:14}
+
+.panel{background:#111a31;border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}.clocks{display:grid;grid-template-columns:1fr 1fr;gap:6px}.clock-card{background:#0c1427;border:1px solid #334363;border-radius:9px;padding:6px 10px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;transition:border-color .18s ease,background-color .18s ease}.clock-card span{font-size:12px;color:#91a1c6;font-weight:600}.clock-card b{font-size:17px;letter-spacing:.5px;font-variant-numeric:tabular-nums;color:#eef3ff}.clock-card.active{border-color:#ffb31f;background:#2a2116;box-shadow:0 0 12px #ffb31f26}.clock-card.active b{color:#ffca55}.clock-card.low{border-color:#f06464;background:#351b24}.clock-card.low b{color:#ff8585}.clock-card.out{opacity:.55}
+
+.meta-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#0c1427;padding:6px 10px;border-radius:9px;font-size:13px}.turn{font-weight:700;margin:0;white-space:nowrap}.turn span{color:#ffb31f}.status{margin:0;color:#b9c8e8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+.stock-pills{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pill{background:#0c1427;border:1px solid #233252;border-radius:8px;padding:4px 7px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#91a1c6}.pill b{color:#fff;font-variant-numeric:tabular-nums}
+
+.history-box{background:#0c1427;border-radius:9px;padding:7px 9px;overflow:hidden;display:flex;flex-direction:column;gap:5px}.history-box ol{display:flex;align-items:center;gap:6px;list-style:none;padding:2px 0;margin:0;width:100%;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin;scrollbar-color:#465a83 #0c1427;color:#eef3ff;min-height:24px;scroll-behavior:smooth}.history-box ol:empty::before{content:"Ходов пока нет";color:#58698f;font-size:12px}.history-box li{flex:0 0 auto;padding:2px 6px;border-radius:5px;background:#17223b;font-size:12px;font-variant-numeric:tabular-nums}.history-box li:last-child{color:#ffca55;background:#2a261c}.captures{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#91a1c6;border-top:1px solid #1a2642;padding-top:4px}.captures b{color:#eef3ff}.adv-badge{display:inline-block;margin-left:4px;padding:0 4px;border-radius:4px;background:#27395f;color:#ffca55;font-size:10px;font-weight:700}
+
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 0}button{font:inherit;border:1px solid #334363;background:#1a2744;color:#eef3ff;padding:7px 11px;border-radius:10px;cursor:pointer;touch-action:manipulation;font-size:13px;transition:transform .12s ease,background-color .16s ease,border-color .16s ease}button:hover:not(:disabled){border-color:#54d6ff}button:active:not(:disabled){transform:scale(.97)}button:disabled{opacity:.4;cursor:not-allowed}[hidden]{display:none!important}.controls button{padding:9px 6px;border-radius:10px;text-align:center;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px}.controls button.active{border-color:#ffb31f;background:#3a2b18}.controls button#breakMode.active{border-color:#ff5c6c;background:#3d1b24}.btn-badge{display:inline-block;padding:1px 6px;border-radius:99px;background:#0c1427;color:#ffca55;font-size:11px;font-weight:700}.hint{margin-top:6px;color:#8798bc;font-size:11px;line-height:1.4;text-align:center}
+
+.menu{max-width:600px;margin:2vh auto;background:linear-gradient(145deg,#182845,#10182b);border:1px solid #334363;border-radius:24px;padding:24px}.menu h1{font-size:clamp(30px,7vw,48px);margin:6px 0}.menu p{color:#aabbdc;line-height:1.5;margin:6px 0 14px;font-size:14px}.eyebrow{color:#54d6ff;letter-spacing:2.5px;font-size:11px}.primary{background:#ffb31f;color:#121827;border:0;font-weight:700}.online-btn{background:linear-gradient(135deg,#1d63b8,#153e7a);border-color:#54d6ff;color:#fff;font-weight:700}.master-btn{border-color:#ff9d1f;background:linear-gradient(135deg,#2a1e17,#1a243d)}.resume-btn{background:#249f68;color:#fff;border:0;font-weight:700}.danger{background:#c93b4b;color:#fff;border:0;font-weight:700}.menu-actions{display:grid;gap:9px;margin-top:16px}.menu-actions button{padding:11px 14px;font-size:15px}.time-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#eef3ff;font-weight:600;margin-top:8px;font-size:14px}.time-choice select,.custom-grid input,.code-input{appearance:none;min-width:190px;padding:8px 32px 8px 11px;border:1px solid #465a83;border-radius:9px;background:#10182b;color:#eef3ff;font:inherit;cursor:pointer}.time-choice select{background-image:linear-gradient(45deg,transparent 50%,#ffca55 50%),linear-gradient(135deg,#ffca55 50%,transparent 50%);background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}.custom-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;padding:10px;background:#0b1428;border:1px solid #2b3a59;border-radius:10px}.custom-grid label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#91a1c6}.custom-grid input{min-width:0;width:100%;padding:6px 8px;text-align:center;font-weight:700;cursor:text}.stats-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:14px;padding:9px 12px;background:#0b1428;border:1px solid #253352;border-radius:10px;font-size:12px;color:#91a1c6}.stats-bar b{color:#ffca55}.stats-reset{padding:3px 8px;font-size:11px;border-radius:6px;background:#17223b;color:#8798bc;border:1px solid #2e4066}.rules{background:#0b1428;padding:14px;border-radius:12px;margin-top:14px;color:#bccce9;line-height:1.5;font-size:13px}.menu-icon{font-size:44px;color:#ffb31f}.drag-ghost{position:fixed;z-index:100;pointer-events:none;display:flex;align-items:center;justify-content:center;will-change:transform;filter:drop-shadow(0 6px 6px #0006);contain:layout style;backface-visibility:hidden}
+
+.mm-box{background:#0b1428;border:1px solid #2b3a59;border-radius:16px;padding:22px 16px;margin-top:12px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.radar{width:64px;height:64px;border-radius:50%;border:3px solid #54d6ff33;border-top-color:#54d6ff;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lobby-box{background:#0b1428;border:1px solid #2b3a59;border-radius:14px;padding:14px;margin-top:10px;display:grid;gap:10px}
+.room-code-display{font-size:32px;font-weight:900;letter-spacing:6px;color:#ffca55;background:#111a31;padding:8px 16px;border-radius:10px;border:1px dashed #ffb31f;text-align:center;user-select:all}
+.join-row{display:flex;gap:8px}
+.code-input{min-width:0;flex:1;padding:8px 12px;font-size:18px;font-weight:800;letter-spacing:4px;text-align:center;cursor:text}
+
+dialog{position:fixed;inset:0;margin:auto;background:#111a31;color:#eef3ff;border:1px solid #3b4c70;border-radius:18px;padding:22px;box-shadow:0 24px 80px #000b}dialog::backdrop{background:#050914aa;backdrop-filter:blur(4px)}dialog#result{width:min(350px,calc(100vw - 28px))}dialog#result h2{margin-top:0;color:#ffca55}dialog#result button,dialog#exitConfirm button{margin:8px 6px 0 0}dialog#exitConfirm{max-width:410px}dialog#promotion{max-width:400px}
+
+@media(max-width:780px){
+  .app{padding:8px 10px}
+  .top{margin-bottom:6px}
+  .layout{grid-template-columns:minmax(0,1fr);gap:8px}
+  .panel{order:-1;padding:8px 10px;gap:6px}
+  .stock-pills{display:none}
+  .hint-desktop{display:none}
+  .time-choice{flex-direction:column;align-items:stretch;gap:4px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body><main class="app">
+<section id="menu" class="menu">
+  <div class="eyebrow">ТАКТИЧЕСКИЕ ШАХМАТЫ • ОНЛАЙН, БОТ ИЛИ 2 ИГРОКА</div>
+  <div class="menu-icon">♜</div>
+  <h1>Chess Walls</h1>
+  <p>Меняй поле боя. Перекрывай пути стенами, пробивай преграды и находи новые линии атаки.</p>
+
+  <label class="time-choice"><span>Цвет (бот / приватная комната)</span>
+    <select id="sideChoice">
+      <option value="w">Белые</option>
+      <option value="b">Чёрные</option>
+      <option value="random" selected>Случайно</option>
+    </select>
+  </label>
+
+  <label class="time-choice"><span>Время каждому игроку</span>
+    <select id="timeControl">
+      <option value="0">Без ограничения</option>
+      <option value="1">1 минута</option>
+      <option value="2">2 минуты</option>
+      <option value="3">3 минуты</option>
+      <option value="5">5 минут</option>
+      <option value="10" selected>10 минут</option>
+      <option value="15">15 минут</option>
+      <option value="30">30 минут</option>
+      <option value="60">60 минут</option>
+    </select>
+  </label>
+
+  <label class="time-choice"><span>Арсенал стен и ломов</span>
+    <select id="arsenalPreset">
+      <option value="standard" selected>Стандарт (6 обыч., 3 длин., 2 лома)</option>
+      <option value="fortress">Крепость (10 обыч., 5 длин., 1 лом)</option>
+      <option value="blitz">Блицкриг (3 обыч., 1 длин., 4 лома)</option>
+      <option value="classic">Без стен (0 стен, 0 ломов)</option>
+      <option value="custom">Свой баланс…</option>
+    </select>
+  </label>
+
+  <div id="customArsenalBox" class="custom-grid" hidden>
+    <label><span>▰ Обычные (0–15)</span><input type="number" id="customShort" min="0" max="15" value="6"></label>
+    <label><span>▰▰ Длинные (0–10)</span><input type="number" id="customLong" min="0" max="10" value="3"></label>
+    <label><span>💥 Ломы (0–10)</span><input type="number" id="customBreak" min="0" max="10" value="2"></label>
+  </div>
+
+  <div class="stats-bar">
+    <span id="statsText">Статистика: <b>0</b> В · <b>0</b> П · <b>0</b> Н</span>
+    <button id="resetStatsBtn" class="stats-reset" title="Сбросить статистику">Сбросить</button>
+  </div>
+
+  <div class="menu-actions">
+    <button id="resume" class="resume-btn" hidden>▶ Продолжить сохранённую партию</button>
+    <button id="quickMatchBtn" class="online-btn">🌐 Найти соперника онлайн (Быстрый матч)</button>
+    <button id="botStart" class="primary">Играть против бота</button>
+    <button id="start">Вдвоём на одном устройстве</button>
+    <button id="rulesButton" aria-expanded="false">Правила и механики</button>
+  </div>
+  <div id="rules" class="rules" hidden>
+    <b>1. Полные правила шахмат:</b> Поддерживаются рокировки, взятие на проходе (с учётом преград из стен), превращение пешек и ничья при недостатке фигур.<br><br>
+    <b>2. Стены и лом:</b> За ход можно походить фигурой, поставить стену (на ПК — в 1 клик по грани, на телефоне — тап для превью и повторный тап для установки) или использовать лом («💥 Пробить») для сноса одного сегмента стены.<br><br>
+    <b>3. Быстрый онлайн-матч:</b> Нажмите «Найти соперника онлайн» — система автоматически соединит вас с первым свободным игроком в очереди поиска.
+  </div>
+</section>
+
+<section id="onlineSetup" class="menu" hidden>
+  <div class="eyebrow">ГЛОБАЛЬНЫЙ МАТЧМЕЙКИНГ • ОНЛАЙН</div>
+  <h1>Поиск соперника</h1>
+
+  <div class="mm-box">
+    <div id="mmRadar" class="radar"></div>
+    <div id="onlineStatus" style="font-size:16px;font-weight:700;color:#eef3ff">Подключение к очереди игроков…</div>
+    <div id="mmSubStatus" style="font-size:12px;color:#91a1c6">Стандартные правила: 10 минут, 6 обычных стен, 3 длинных, 2 лома</div>
+    <button id="retryQuickMatchBtn" class="online-btn" hidden>🔄 Повторить поиск</button>
+  </div>
+
+  <div style="margin-top:14px;text-align:center">
+    <button id="togglePrivateLobbyBtn" style="font-size:12px;padding:6px 12px;background:transparent;border-color:#2b3a59;color:#91a1c6">Играть с другом по приватному коду ▾</button>
+  </div>
+
+  <div id="privateLobbyWrap" hidden>
+    <div class="lobby-box">
+      <button id="createRoomBtn" class="primary">Создать приватную комнату</button>
+      <div id="hostCodeArea" hidden>
+        <div style="font-size:12px;color:#91a1c6;margin-bottom:6px;text-align:center">Код вашей комнаты (нажмите для копирования):</div>
+        <div id="roomCodeText" class="room-code-display" title="Нажмите для копирования">----</div>
+      </div>
+      <div class="join-row">
+        <input type="text" id="joinCodeInput" class="code-input" maxlength="4" inputmode="numeric" placeholder="Код друга">
+        <button id="joinRoomBtn" class="online-btn">Войти</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-actions">
+    <button id="onlineBackBtn">Отменить поиск и выйти в меню</button>
+  </div>
+</section>
+
+<section id="botSetup" class="menu" hidden>
+  <div class="eyebrow">ИГРА ПРОТИВ БОТА</div>
+  <h1>Выбери соперника</h1>
+  <p id="botSideInfo">Выбор стороны применяется при старте партии.</p>
+  <div class="menu-actions">
+    <button data-level="easy"><b>Лёгкий (~800 ЭЛО)</b><br><span style="color:#91a1c6;font-size:12px">Часто ошибается — для знакомства с механикой</span></button>
+    <button data-level="medium"><b>Средний (~1300 ЭЛО)</b><br><span style="color:#91a1c6;font-size:12px">Контролирует центр, строит стены и пробивает преграды</span></button>
+    <button data-level="hard"><b>Сложный (~1650 ЭЛО)</b><br><span style="color:#91a1c6;font-size:12px">Тактический расчёт на 2 хода вперёд и защита фигур стенами</span></button>
+    <button data-level="master" class="master-btn"><b style="color:#ffca55">👑 Гроссмейстер (~2000 ЭЛО)</b><br><span style="color:#b8c7e8;font-size:12px">Глубокий минимакс + активные капканы из стен, защита и пробитие обороны</span></button>
+    <button id="botBack">Назад в меню</button>
+  </div>
+</section>
+
+<dialog id="promotion">
+  <h2>Превращение пешки</h2>
+  <p>Выберите новую фигуру:</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <button data-promote="q" class="primary">Ферзь</button>
+    <button data-promote="r">Ладья</button>
+    <button data-promote="b">Слон</button>
+    <button data-promote="n">Конь</button>
+  </div>
+</dialog>
+
+<dialog id="exitConfirm">
+  <h2>Меню партии</h2>
+  <p id="exitDialogText">Партия сохранена. Вы можете выйти в меню на паузу или сдаться.</p>
+  <button id="exitStay">Остаться</button>
+  <button id="exitPause" class="primary">В меню (пауза)</button>
+  <button id="exitConfirmButton" class="danger">Сдаться</button>
+</dialog>
+
+<dialog id="result">
+  <h2 id="resultTitle"></h2>
+  <p id="resultReason"></p>
+  <button id="resultRematch" class="primary">Реванш</button>
+  <button id="resultMenu">Главное меню</button>
+</dialog>
+
+<section id="game" hidden>
+  <div class="top">
+    <div>
+      <div class="brand">♜ Chess Walls <span id="netBadge" class="net-pill" hidden>ОНЛАЙН</span></div>
+      <div class="sub">Тактические шахматы со стенами</div>
+    </div>
+    <div class="top-actions">
+      <button id="undoBtn" title="Отменить последний ход (Z)" disabled>↶</button>
+      <button id="reset" title="Начать заново">↻ Заново</button>
+      <button id="soundToggle" title="Звук Вкл/Выкл">🔊</button>
+      <button id="flipBoard" title="Перевернуть доску (F)">⇅</button>
+      <button id="menuButton">Меню</button>
+    </div>
+  </div>
+  <div class="layout">
+    <div>
+      <div class="board-wrap"><div id="board" class="board"></div></div>
+      <div class="controls">
+        <button id="short" aria-pressed="false">▰ Стена <span id="btnShortBadge" class="btn-badge">6</span></button>
+        <button id="long" aria-pressed="false">▰▰ Длинная <span id="btnLongBadge" class="btn-badge">3</span></button>
+        <button id="breakMode" aria-pressed="false">💥 Пробить <span id="btnBreakBadge" class="btn-badge">2</span></button>
+      </div>
+      <div class="hint">Наведите на грань клетки для постройки стены · <span style="color:#ff9d1f">● Белые</span> · <span style="color:#9b6cff">● Чёрные</span></div>
+    </div>
+    <aside class="panel">
+      <div id="clocks" class="clocks">
+        <div id="clockW" class="clock-card"><span>Белые</span><b>10:00</b></div>
+        <div id="clockB" class="clock-card"><span>Чёрные</span><b>10:00</b></div>
+      </div>
+      <div class="meta-bar">
+        <div class="turn">Ход: <span id="turn">Белые</span></div>
+        <div id="status" class="status">Выберите фигуру.</div>
+      </div>
+      <div class="stock-pills">
+        <div class="pill"><span>▰ Обыч:</span><b id="shortCount">6</b></div>
+        <div class="pill"><span>▰▰ Длин:</span><b id="longCount">3</b></div>
+        <div class="pill"><span>💥 Лом:</span><b id="breakCount">2</b></div>
+      </div>
+      <div class="history-box">
+        <ol id="moveHistory"></ol>
+        <div class="captures">
+          <span>Белые: <b id="capturedW">—</b><span id="advW" class="adv-badge" hidden></span></span>
+          <span>Чёрные: <b id="capturedB">—</b><span id="advB" class="adv-badge" hidden></span></span>
+        </div>
+      </div>
+      <div class="hint hint-desktop">Клавиши <b>1, 2, 3</b> — выбор стен и лома, <b>Z</b> — отмена хода, <b>F</b> — переворот.</div>
+    </aside>
+  </div>
+</section>
+</main>
+<script>
+const STORAGE_KEYS = {
+  SAVE: 'chessWalls_savedGame_v14',
+  STATS: 'chessWalls_stats_v14',
+  PREFS: 'chessWalls_prefs_v14'
+};
+
+const PRESETS = {
+  standard: {short: 6, long: 3, break: 2},
+  fortress: {short: 10, long: 5, break: 1},
+  blitz:    {short: 3, long: 1, break: 4},
+  classic:  {short: 0, long: 0, break: 0}
+};
+
+const glyph = {wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟'};
+const pieceVal = {p:1, n:3, b:3, r:5, q:9, k:0};
+const engineVal = {p:100, n:320, b:335, r:500, q:920, k:20000};
+
+const KNIGHT_DIRS = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const KING_DIRS   = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const ORTHO_DIRS  = [[-1,0],[1,0],[0,-1],[0,1]];
+const DIAG_DIRS   = [[-1,-1],[-1,1],[1,-1],[1,1]];
+const ALL_DIRS    = [...ORTHO_DIRS, ...DIAG_DIRS];
+
+let board, turn, mode, selected, walls = [], counts, lastMove = null, moveHistory = [], captured = {w:[], b:[]};
+const wallMap = new Uint8Array(128);
+const cellNodes = new Array(64);
+const cellRefs = new Array(64);
+
+let stateStack = [], previewWall = null, castlingRights = {w:{k:true, r1:true, r8:true}, b:{k:true, r1:true, r8:true}};
+let enPassantTarget = null, wallGroupSeq = 1, halfMoveClock = 0;
+let flipped = false, lastClockText = "", ended = false, wallsSignature = "";
+let stocks = {w:{short:6, long:3, break:2}, b:{short:6, long:3, break:2}}, remaining = {w:0, b:0}, clockStamp = 0, clockEnabled = false;
+let busy = false, versusBot = false, botTimer = null, difficulty = 'medium', playerSide = 'w';
+let versusOnline = false, peer = null, netConn = null, isOnlineHost = false, currentRoomCode = '', onlineConfig = null, mmActive = false;
+let suppressClick = false, pointerDrag = null, animationVersion = 0, promotionPending = null;
+let renderedHistoryLen = 0, historySignature = null, soundEnabled = true, audioCtx = null, lastClockSave = 0, lastPointerType = 'mouse';
+
+let stats = {botWins: 0, botLosses: 0, botDraws: 0, hardWins: 0, masterWins: 0, onlineWins: 0, localGames: 0};
+
+const pst = {
+  p: [
+    [0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[12,12,22,32,32,22,12,12],
+    [6,6,12,26,26,12,6,6],[0,0,0,22,22,0,0,0],[5,-5,-10,0,0,-10,-5,5],
+    [5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]
+  ],
+  n: [
+    [-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],[-30,0,12,16,16,12,0,-30],
+    [-30,6,16,22,22,16,6,-30],[-30,0,16,22,22,16,0,-30],[-30,6,12,16,16,12,6,-30],
+    [-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]
+  ],
+  b: [
+    [-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,8,12,12,8,0,-10],
+    [-10,6,6,12,12,6,6,-10],[-10,0,12,12,12,12,0,-10],[-10,10,10,10,10,10,10,-10],
+    [-10,6,0,0,0,0,6,-10],[-20,-10,-10,-10,-10,-10,-10,-20]
+  ],
+  r: [
+    [0,0,0,0,0,0,0,0],[8,14,14,14,14,14,14,8],[-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],[0,0,0,6,6,0,0,0]
+  ],
+  q: [
+    [-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,6,6,6,6,0,-10],
+    [-5,0,6,8,8,6,0,-5],[0,0,6,8,8,6,0,-5],[-10,6,6,6,6,6,0,-10],
+    [-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]
+  ],
+  k: [
+    [-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],
+    [20,20,0,0,0,0,20,20],[20,32,12,0,0,12,32,20]
+  ],
+  kEnd: [
+    [-50,-30,-30,-30,-30,-30,-30,-50],[-30,-10,0,0,0,0,-10,-30],[-30,0,20,30,30,20,0,-30],
+    [-30,0,30,40,40,30,0,-30],[-30,0,30,40,40,30,0,-30],[-30,0,20,30,30,20,0,-30],
+    [-30,-10,0,0,0,0,-10,-30],[-50,-30,-30,-30,-30,-30,-30,-50]
+  ]
+};
+
+function isRestrictedOpponentTurn() {
+  return (versusBot || versusOnline) && turn !== playerSide;
+}
+
+function initBoardDOM() {
+  const el = document.getElementById('board');
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 64; i++) {
+    let d = document.createElement('div');
+    d.className = 'cell';
+    let s = document.createElement('span');
+    s.className = 'piece';
+    d.append(s);
+
+    let ri = i >> 3, ci = i & 7;
+    let cr = null, cc = null;
+    if (ci === 0) {
+      cr = document.createElement('span');
+      cr.className = 'coord coord-r';
+      d.append(cr);
+    }
+    if (ri === 7) {
+      cc = document.createElement('span');
+      cc.className = 'coord coord-c';
+      d.append(cc);
+    }
+    d.onclick = (e) => {
+      if (!suppressClick && !busy) clickCell(+d.dataset.r, +d.dataset.c, e);
+    };
+    cellNodes[i] = d;
+    cellRefs[i] = {piece: s, cr, cc, lastCls: '', lastPCls: '', lastTxt: ''};
+    frag.append(d);
+  }
+  el.append(frag);
+}
+
+function syncWallMap() {
+  wallMap.fill(0);
+  for (let i = 0; i < walls.length; i++) {
+    let w = walls[i];
+    wallMap[(w.o === 'v' ? 64 : 0) + (w.r << 3) + w.c] = 1;
+  }
+}
+
+function hasWall(r, c, o) {
+  return wallMap[(o === 'v' ? 64 : 0) + (r << 3) + c] === 1;
+}
+
+function edgeBlockedRC(r1, c1, r2, c2) {
+  return r1 === r2
+    ? wallMap[64 + (r1 << 3) + (c1 < c2 ? c1 : c2)] === 1
+    : wallMap[((r1 < r2 ? r1 : r2) << 3) + c1] === 1;
+}
+
+function edgeBlocked(a, b) {
+  return edgeBlockedRC(a[0], a[1], b[0], b[1]);
+}
+
+function stepBlocked(r, c, nr, nc) {
+  if (r !== nr && c !== nc) {
+    let first = edgeBlockedRC(r, c, nr, c) || edgeBlockedRC(nr, c, nr, nc);
+    let second = edgeBlockedRC(r, c, r, nc) || edgeBlockedRC(r, nc, nr, nc);
+    return first && second;
+  }
+  return edgeBlockedRC(r, c, nr, nc);
+}
+
+function blocked(a, b) {
+  let r = a[0], c = a[1], sr = Math.sign(b[0] - r), sc = Math.sign(b[1] - c);
+  while (r !== b[0] || c !== b[1]) {
+    let nr = r + sr, nc = c + sc;
+    if (stepBlocked(r, c, nr, nc)) return true;
+    r = nr; c = nc;
+  }
+  return false;
+}
+
+function haptic(pattern) {
+  try {
+    if (soundEnabled && navigator.vibrate) navigator.vibrate(pattern);
+  } catch(e) {}
+}
+
+function applyWallGeometry(node, w) {
+  if (w.o === 'h') {
+    let lineY = flipped ? (7 - w.r) : (w.r + 1);
+    let colX = flipped ? (7 - w.c) : w.c;
+    node.style.top = (lineY * 12.5) + '%';
+    node.style.left = (colX * 12.5 + 0.4) + '%';
+    node.style.width = '11.7%';
+  } else {
+    let lineX = flipped ? (7 - w.c) : (w.c + 1);
+    let rowY = flipped ? (7 - w.r) : w.r;
+    node.style.left = (lineX * 12.5) + '%';
+    node.style.top = (rowY * 12.5 + 0.4) + '%';
+    node.style.height = '11.7%';
+  }
+}
+
+function updatePreviewDOM() {
+  const el = document.getElementById('board');
+  if (!el) return;
+  el.querySelectorAll('.wall.preview').forEach(n => n.remove());
+  if (previewWall && (mode === 'short' || mode === 'long')) {
+    previewWall.segments.forEach(w => {
+      let d = document.createElement('div');
+      d.className = 'wall preview ' + w.o + ' ' + (previewWall.valid ? 'valid' : 'invalid');
+      applyWallGeometry(d, w);
+      el.append(d);
+    });
+  }
+}
+
+function computeHoveredWall(clientX, clientY, wallMode) {
+  let el = document.elementFromPoint(clientX, clientY);
+  let cell = el?.closest('.cell');
+  if (!cell) return null;
+  let r = +cell.dataset.r, c = +cell.dataset.c;
+  let rect = cell.getBoundingClientRect();
+  let rx = (clientX - rect.left) / rect.width;
+  let ry = (clientY - rect.top) / rect.height;
+
+  let dTop = ry, dBottom = 1 - ry, dLeft = rx, dRight = 1 - rx;
+  let minD = Math.min(dTop, dBottom, dLeft, dRight);
+  let wr = r, wc = c, o = 'h';
+  if (minD === dTop) {
+    o = 'h';
+    wr = flipped ? r : r - 1;
+  } else if (minD === dBottom) {
+    o = 'h';
+    wr = flipped ? r - 1 : r;
+  } else if (minD === dLeft) {
+    o = 'v';
+    wc = flipped ? c : c - 1;
+  } else {
+    o = 'v';
+    wc = flipped ? c - 1 : c;
+  }
+
+  if (wallMode === 'long' && flipped) {
+    if (o === 'h') wc = wc - 1;
+    else wr = wr - 1;
+  }
+
+  if (wr < 0 || wc < 0 || (o === 'h' && wr >= 7) || (o === 'v' && wc >= 7)) return null;
+  let key = `${wr}:${wc}:${o}:${wallMode}`;
+  let check = validateWallPlacement(wr, wc, o, wallMode, turn);
+  let rawSegments = check.segments || [{r: wr, c: wc, o, t: wallMode}];
+  return {key, wr, wc, o, valid: check.valid, reason: check.reason, segments: rawSegments};
+}
+
+function loadStatsAndPrefs() {
+  try {
+    let rawStats = localStorage.getItem(STORAGE_KEYS.STATS);
+    if (rawStats) stats = {...stats, ...JSON.parse(rawStats)};
+  } catch(e) {}
+  renderStatsUI();
+
+  try {
+    let rawPrefs = localStorage.getItem(STORAGE_KEYS.PREFS);
+    if (rawPrefs) {
+      let p = JSON.parse(rawPrefs);
+      if (p.sideChoice) document.getElementById('sideChoice').value = p.sideChoice;
+      if (p.timeControl !== undefined) document.getElementById('timeControl').value = p.timeControl;
+      if (p.arsenalPreset && (PRESETS[p.arsenalPreset] || p.arsenalPreset === 'custom')) {
+        document.getElementById('arsenalPreset').value = p.arsenalPreset;
+      }
+      if (p.customShort !== undefined) document.getElementById('customShort').value = p.customShort;
+      if (p.customLong !== undefined) document.getElementById('customLong').value = p.customLong;
+      if (p.customBreak !== undefined) document.getElementById('customBreak').value = p.customBreak;
+      if (p.soundEnabled !== undefined) {
+        soundEnabled = p.soundEnabled;
+        document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+      }
+    }
+  } catch(e) {}
+  document.getElementById('customArsenalBox').hidden = (document.getElementById('arsenalPreset').value !== 'custom');
+}
+
+function savePrefs() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify({
+      sideChoice: document.getElementById('sideChoice').value,
+      timeControl: document.getElementById('timeControl').value,
+      arsenalPreset: document.getElementById('arsenalPreset').value,
+      customShort: document.getElementById('customShort').value,
+      customLong: document.getElementById('customLong').value,
+      customBreak: document.getElementById('customBreak').value,
+      soundEnabled
+    }));
+  } catch(e) {}
+}
+
+function renderStatsUI() {
+  let el = document.getElementById('statsText');
+  if (!el) return;
+  let gmBadge = stats.masterWins > 0 ? ` (👑 ГМ: <b>${stats.masterWins}</b>)` : (stats.hardWins > 0 ? ` (сложн: <b>${stats.hardWins}</b>)` : '');
+  let netBadge = stats.onlineWins > 0 ? ` &nbsp;|&nbsp; Сеть: <b>${stats.onlineWins}</b> В` : '';
+  el.innerHTML = `Бот: <b>${stats.botWins}</b> В · <b>${stats.botLosses}</b> П · <b>${stats.botDraws}</b> Н${gmBadge}${netBadge} &nbsp;|&nbsp; 2P: <b>${stats.localGames}</b>`;
+}
+
+function recordGameStats(winnerColor, isDraw) {
+  try {
+    if (versusOnline) {
+      if (!isDraw && winnerColor === playerSide) stats.onlineWins++;
+    } else if (versusBot) {
+      if (isDraw) stats.botDraws++;
+      else if (winnerColor === playerSide) {
+        stats.botWins++;
+        if (difficulty === 'hard') stats.hardWins++;
+        if (difficulty === 'master') stats.masterWins++;
+      } else {
+        stats.botLosses++;
+      }
+    } else {
+      stats.localGames++;
+    }
+    localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(stats));
+    renderStatsUI();
+  } catch(e) {}
+}
+
+function saveActiveGame() {
+  if (versusOnline) return;
+  try {
+    if (ended || (moveHistory.length === 0 && walls.length === 0)) {
+      if (ended) localStorage.removeItem(STORAGE_KEYS.SAVE);
+      return;
+    }
+    let payload = {
+      board, turn, walls, stocks, remaining, clockEnabled,
+      castlingRights, enPassantTarget, wallGroupSeq, halfMoveClock,
+      flipped, versusBot, difficulty, playerSide,
+      lastMove, moveHistory, captured, stateStack: stateStack.slice(-40)
+    };
+    localStorage.setItem(STORAGE_KEYS.SAVE, JSON.stringify(payload));
+    document.getElementById('resume').hidden = false;
+  } catch(e) {}
+}
+
+function clearSavedGame() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.SAVE);
+    document.getElementById('resume').hidden = true;
+  } catch(e) {}
+}
+
+function loadSavedGame() {
+  try {
+    let raw = localStorage.getItem(STORAGE_KEYS.SAVE);
+    if (!raw) return false;
+    let data = JSON.parse(raw);
+    if (!data || !data.board || data.ended) return false;
+    board = data.board;
+    turn = data.turn;
+    walls = data.walls || [];
+    syncWallMap();
+    stocks = data.stocks;
+    counts = stocks[turn];
+    remaining = data.remaining;
+    clockEnabled = data.clockEnabled;
+    castlingRights = data.castlingRights;
+    enPassantTarget = data.enPassantTarget;
+    wallGroupSeq = data.wallGroupSeq || 1;
+    halfMoveClock = data.halfMoveClock || 0;
+    flipped = Boolean(data.flipped);
+    versusBot = Boolean(data.versusBot);
+    versusOnline = false;
+    difficulty = data.difficulty || 'medium';
+    playerSide = data.playerSide || 'w';
+    lastMove = data.lastMove || null;
+    moveHistory = data.moveHistory || [];
+    captured = data.captured || {w:[], b:[]};
+    stateStack = data.stateStack || [];
+    ended = false;
+    busy = false;
+    mode = 'move';
+    selected = null;
+    previewWall = null;
+    historySignature = null;
+    renderedHistoryLen = 0;
+    wallsSignature = "";
+    clockStamp = performance.now();
+    render();
+    msg('Партия восстановлена.');
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function hasSavedGameInStorage() {
+  try {
+    return Boolean(localStorage.getItem(STORAGE_KEYS.SAVE));
+  } catch(e) { return false; }
+}
+
+function getSelectedArsenal() {
+  let preset = document.getElementById('arsenalPreset').value || 'standard';
+  if (PRESETS[preset]) return {...PRESETS[preset]};
+  let s = Math.max(0, Math.min(15, parseInt(document.getElementById('customShort').value, 10) || 0));
+  let l = Math.max(0, Math.min(10, parseInt(document.getElementById('customLong').value, 10) || 0));
+  let b = Math.max(0, Math.min(10, parseInt(document.getElementById('customBreak').value, 10) || 0));
+  document.getElementById('customShort').value = s;
+  document.getElementById('customLong').value = l;
+  document.getElementById('customBreak').value = b;
+  return {short: s, long: l, break: b};
+}
+
+function syncArsenalUI() {
+  let preset = document.getElementById('arsenalPreset').value;
+  document.getElementById('customArsenalBox').hidden = (preset !== 'custom');
+  savePrefs();
+}
+
+['sideChoice','timeControl','arsenalPreset','customShort','customLong','customBreak'].forEach(id => {
+  document.getElementById(id).addEventListener('change', syncArsenalUI);
+});
+
+document.getElementById('resetStatsBtn').onclick = () => {
+  stats = {botWins: 0, botLosses: 0, botDraws: 0, hardWins: 0, masterWins: 0, onlineWins: 0, localGames: 0};
+  try { localStorage.removeItem(STORAGE_KEYS.STATS); } catch(e) {}
+  renderStatsUI();
+};
+
+function sfx(type) {
+  if (!soundEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if (type === 'move') {
+      haptic(8);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(190, now); osc.frequency.exponentialRampToValueAtTime(75, now + 0.065);
+      gain.gain.setValueAtTime(0.22, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.065);
+      osc.start(now); osc.stop(now + 0.065);
+    } else if (type === 'capture') {
+      haptic(18);
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(280, now); osc.frequency.exponentialRampToValueAtTime(60, now + 0.11);
+      gain.gain.setValueAtTime(0.32, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.11);
+      osc.start(now); osc.stop(now + 0.11);
+    } else if (type === 'wall') {
+      haptic(15);
+      osc.type = 'square'; osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(90, now + 0.09);
+      gain.gain.setValueAtTime(0.16, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+      osc.start(now); osc.stop(now + 0.09);
+    } else if (type === 'break') {
+      haptic([25, 30, 25]);
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(42, now + 0.16);
+      gain.gain.setValueAtTime(0.28, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.16);
+      osc.start(now); osc.stop(now + 0.16);
+    } else if (type === 'check') {
+      haptic([20, 40, 20]);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(580, now); osc.frequency.setValueAtTime(440, now + 0.09);
+      gain.gain.setValueAtTime(0.25, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.24);
+      osc.start(now); osc.stop(now + 0.24);
+    } else if (type === 'end') {
+      haptic([40, 50, 60]);
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(330, now); osc.frequency.setValueAtTime(440, now + 0.12); osc.frequency.setValueAtTime(554, now + 0.24);
+      gain.gain.setValueAtTime(0.25, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+      osc.start(now); osc.stop(now + 0.45);
+    }
+  } catch(e) {}
+}
+
+function botSide() { return playerSide === 'w' ? 'b' : 'w'; }
+
+// ============================================================================
+// АВТОМАТИЧЕСКИЙ МАТЧМЕЙКИНГ И СЕТЕВАЯ ИГРА (PEERJS WEBRTC + STUN)
+// ============================================================================
+
+const MM_QUEUE_SLOTS = 6;
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' }
+    ]
+  }
+};
+
+let lobbyPeer = null;
+
+function sendNet(data) {
+  if (versusOnline && netConn && netConn.open) {
+    try { netConn.send(data); } catch(e) {}
+  }
+}
+
+function closeLobbyPeer() {
+  if (lobbyPeer) {
+    try { lobbyPeer.destroy(); } catch(e) {}
+    lobbyPeer = null;
+  }
+}
+
+function closeNetSession() {
+  mmActive = false;
+  versusOnline = false;
+  onlineConfig = null;
+  closeLobbyPeer();
+  if (netConn) { try { netConn.close(); } catch(e) {} netConn = null; }
+  if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+  document.getElementById('netBadge').hidden = true;
+  document.getElementById('reset').disabled = false;
+}
+
+function setOnlineStatus(txt, showRadar = true) {
+  document.getElementById('onlineStatus').textContent = txt;
+  document.getElementById('mmRadar').hidden = !showRadar;
+}
+
+function startQuickMatchmaking(slot = 1) {
+  if (typeof Peer === 'undefined') {
+    setOnlineStatus('Библиотека сети ещё загружается или нет интернета. Подождите секунду…', false);
+    document.getElementById('retryQuickMatchBtn').hidden = false;
+    return;
+  }
+
+  closeNetSession();
+  mmActive = true;
+  document.getElementById('retryQuickMatchBtn').hidden = true;
+  setOnlineStatus(`Поиск соперника в сети (канал #${slot})…`, true);
+
+  peer = new Peer(PEER_CONFIG);
+
+  peer.on('open', myGameId => {
+    if (!mmActive) return;
+
+    peer.on('connection', gameConn => {
+      if (!mmActive || netConn) { gameConn.close(); return; }
+      mmActive = false;
+      closeLobbyPeer();
+      isOnlineHost = true;
+      setOnlineStatus('Соперник подключился! Запуск партии…', true);
+      setupNetConnHandlers(gameConn, true);
+    });
+
+    const slotId = `cw-quickmatch-v2-slot-${slot}`;
+    lobbyPeer = new Peer(slotId, PEER_CONFIG);
+
+    lobbyPeer.on('open', () => {
+      if (!mmActive) { closeLobbyPeer(); return; }
+      setOnlineStatus('Ожидание соперника в очереди… Игра начнётся автоматически!', true);
+
+      lobbyPeer.on('connection', handConn => {
+        handConn.on('open', () => {
+          handConn.send({ type: 'redirect', hostGameId: myGameId });
+          setTimeout(() => closeLobbyPeer(), 400);
+        });
+      });
+    });
+
+    lobbyPeer.on('error', err => {
+      if (!mmActive) return;
+      if (err.type === 'unavailable-id') {
+        closeLobbyPeer();
+        setOnlineStatus('Найден игрок в очереди! Соединяемся…', true);
+
+        let handConn = peer.connect(slotId, { reliable: true });
+        let resolved = false;
+
+        let failTimer = setTimeout(() => {
+          if (!resolved && mmActive) {
+            try { handConn.close(); } catch(e) {}
+            startQuickMatchmaking(slot < MM_QUEUE_SLOTS ? slot + 1 : 1);
+          }
+        }, 3500);
+
+        handConn.on('data', msg => {
+          if (msg && msg.type === 'redirect' && msg.hostGameId) {
+            resolved = true;
+            clearTimeout(failTimer);
+            isOnlineHost = false;
+            try { handConn.close(); } catch(e) {}
+            let realConn = peer.connect(msg.hostGameId, { reliable: true });
+            let matchOpened = false;
+            let connectGuard = setTimeout(() => {
+              if (!matchOpened && mmActive) {
+                try { realConn.close(); } catch(e) {}
+                startQuickMatchmaking(slot < MM_QUEUE_SLOTS ? slot + 1 : 1);
+              }
+            }, 4000);
+            realConn.on('open', () => {
+              matchOpened = true;
+              mmActive = false;
+              clearTimeout(connectGuard);
+            });
+            setupNetConnHandlers(realConn, true);
+          }
+        });
+
+        handConn.on('error', () => {
+          if (!resolved && mmActive) {
+            clearTimeout(failTimer);
+            startQuickMatchmaking(slot < MM_QUEUE_SLOTS ? slot + 1 : 1);
+          }
+        });
+      } else {
+        setOnlineStatus('Ошибка сервера очереди: ' + (err.type || 'попробуйте снова'), false);
+        document.getElementById('retryQuickMatchBtn').hidden = false;
+      }
+    });
+  });
+
+  peer.on('error', err => {
+    if (mmActive) {
+      setOnlineStatus('Ошибка сети: ' + (err.type || 'проверьте подключение'), false);
+      document.getElementById('retryQuickMatchBtn').hidden = false;
+    }
+  });
+}
+
+function setupNetConnHandlers(conn, isQuickMatch = false) {
+  netConn = conn;
+  conn.on('open', () => {
+    if (isOnlineHost) {
+      let choice = document.getElementById('sideChoice').value;
+      let hostColor = isQuickMatch ? (Math.random() < 0.5 ? 'w' : 'b') : (choice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : choice);
+      let arsenal = isQuickMatch ? {...PRESETS.standard} : getSelectedArsenal();
+      let timeSec = isQuickMatch ? 600 : Number(document.getElementById('timeControl').value) * 60;
+      onlineConfig = {hostColor, arsenal, timeSec};
+      playerSide = hostColor;
+      versusOnline = true;
+      versusBot = false;
+      sendNet({type: 'init', guestColor: hostColor === 'w' ? 'b' : 'w', arsenal, timeSec});
+      startOnlineMatch(onlineConfig.arsenal, onlineConfig.timeSec);
+    }
+  });
+
+  conn.on('data', data => {
+    if (!data || !data.type) return;
+    if (typeof data.remTime === 'number' && clockEnabled) {
+      remaining[turn] = Math.max(0, data.remTime);
+    }
+    if (data.type === 'init') {
+      playerSide = data.guestColor;
+      onlineConfig = {hostColor: data.guestColor === 'w' ? 'b' : 'w', arsenal: data.arsenal, timeSec: data.timeSec};
+      versusOnline = true;
+      versusBot = false;
+      startOnlineMatch(data.arsenal, data.timeSec);
+    } else if (data.type === 'move') {
+      animateMove(data.a, data.b, 'Ход соперника.', null, data.promote || null);
+    } else if (data.type === 'wall') {
+      applyRemoteWall(data.wr, data.wc, data.o, data.wallMode);
+    } else if (data.type === 'break') {
+      executeWallBreak(data.idx, 'Соперник пробил стену!', true);
+    } else if (data.type === 'resign') {
+      recordGameStats(playerSide, false);
+      finishGame('Победа', 'Соперник сдался.');
+    } else if (data.type === 'timeout') {
+      recordGameStats(playerSide, false);
+      finishGame('Победа', 'У соперника истекло время.');
+    } else if (data.type === 'rematch') {
+      playerSide = playerSide === 'w' ? 'b' : 'w';
+      document.getElementById('result').close();
+      startOnlineMatch(onlineConfig.arsenal, onlineConfig.timeSec);
+    }
+  });
+
+  conn.on('close', () => {
+    if (versusOnline && !ended && !document.getElementById('game').hidden) {
+      recordGameStats(playerSide, false);
+      finishGame('Победа', 'Соперник отключился от партии.');
+    }
+  });
+}
+
+function startOnlineMatch(arsenal, timeSec) {
+  document.getElementById('onlineSetup').hidden = true;
+  document.getElementById('netBadge').hidden = false;
+  document.getElementById('reset').disabled = true;
+  reset(false, arsenal, timeSec);
+  showGame();
+  msg(turn === playerSide ? 'Соперник найден! Ваш ход.' : 'Соперник найден! Ход соперника…');
+}
+
+function applyRemoteWall(wr, wc, o, wallMode) {
+  let check = validateWallPlacement(wr, wc, o, wallMode, turn);
+  if (!check.valid) return;
+  enPassantTarget = null;
+  halfMoveClock++;
+  previewWall = null;
+  let gid = wallGroupSeq++;
+  check.segments.forEach(w => { w.owner = turn; w.gid = gid; });
+  walls.push(...check.segments);
+  syncWallMap();
+  counts[wallMode]--;
+  moveHistory.push({color: turn, wall: true, wallType: wallMode, o, r: wr, c: wc});
+  sfx('wall');
+  animateWalls(check.segments, 'Соперник установил стену.');
+}
+
+document.getElementById('quickMatchBtn').onclick = () => {
+  document.getElementById('menu').hidden = true;
+  document.getElementById('onlineSetup').hidden = false;
+  document.getElementById('privateLobbyWrap').hidden = true;
+  document.getElementById('hostCodeArea').hidden = true;
+  startQuickMatchmaking(1);
+};
+
+document.getElementById('retryQuickMatchBtn').onclick = () => startQuickMatchmaking(1);
+
+document.getElementById('togglePrivateLobbyBtn').onclick = () => {
+  let wrap = document.getElementById('privateLobbyWrap');
+  wrap.hidden = !wrap.hidden;
+};
+
+document.getElementById('createRoomBtn').onclick = () => {
+  if (typeof Peer === 'undefined') {
+    setOnlineStatus('Ошибка: нет подключения к интернету.', false);
+    return;
+  }
+  closeNetSession();
+  isOnlineHost = true;
+  currentRoomCode = String(Math.floor(1000 + Math.random() * 9000));
+  setOnlineStatus('Создание приватной комнаты…', true);
+  peer = new Peer('cw-room-' + currentRoomCode, PEER_CONFIG);
+  peer.on('open', () => {
+    document.getElementById('roomCodeText').textContent = currentRoomCode;
+    document.getElementById('hostCodeArea').hidden = false;
+    setOnlineStatus('Ожидание друга по коду ' + currentRoomCode + '…', true);
+  });
+  peer.on('connection', conn => {
+    if (netConn) { conn.close(); return; }
+    setOnlineStatus('Друг подключился! Запуск партии…', true);
+    setupNetConnHandlers(conn, false);
+  });
+  peer.on('error', err => {
+    setOnlineStatus('Ошибка сети: ' + (err.type || 'попробуйте снова'), false);
+  });
+};
+
+document.getElementById('roomCodeText').onclick = () => {
+  if (!currentRoomCode) return;
+  navigator.clipboard?.writeText(currentRoomCode);
+  setOnlineStatus('Код ' + currentRoomCode + ' скопирован в буфер!', true);
+};
+
+document.getElementById('joinRoomBtn').onclick = () => {
+  if (typeof Peer === 'undefined') {
+    setOnlineStatus('Ошибка: нет подключения к интернету.', false);
+    return;
+  }
+  let code = document.getElementById('joinCodeInput').value.trim();
+  if (!/^\d{4}$/.test(code)) {
+    setOnlineStatus('Введите 4 цифры кода комнаты.', false);
+    return;
+  }
+  closeNetSession();
+  isOnlineHost = false;
+  setOnlineStatus('Подключение к комнате ' + code + '…', true);
+  peer = new Peer(PEER_CONFIG);
+  peer.on('open', () => {
+    let conn = peer.connect('cw-room-' + code, {reliable: true});
+    setupNetConnHandlers(conn, false);
+  });
+  peer.on('error', () => {
+    setOnlineStatus('Комната не найдена.', false);
+  });
+};
+
+document.getElementById('onlineBackBtn').onclick = () => {
+  closeNetSession();
+  document.getElementById('onlineSetup').hidden = true;
+  document.getElementById('menu').hidden = false;
+};
+
+// ============================================================================
+// БАЗОВАЯ ЛОГИКА ИГРЫ И ОПТИМИЗИРОВАННЫЙ РЕНДЕР
+// ============================================================================
+
+function saveUndoState() {
+  if (versusOnline) return;
+  if (stateStack.length >= 60) stateStack.shift();
+  stateStack.push({
+    board: board.map(r => [...r]),
+    turn,
+    walls: walls.map(w => ({...w})),
+    stocks: {w: {...stocks.w}, b: {...stocks.b}},
+    castlingRights: JSON.parse(JSON.stringify(castlingRights)),
+    enPassantTarget: enPassantTarget ? [...enPassantTarget] : null,
+    halfMoveClock,
+    lastMove: lastMove ? {from:[...lastMove.from], to:[...lastMove.to]} : null,
+    moveHistory: moveHistory.map(m => ({...m})),
+    captured: {w: [...captured.w], b: [...captured.b]}
+  });
+  updateUndoBtn();
+}
+
+function updateUndoBtn() {
+  const btn = document.getElementById('undoBtn');
+  if (!btn) return;
+  if (ended || busy || versusOnline) { btn.disabled = true; return; }
+  btn.disabled = stateStack.length === 0;
+}
+
+function undoMove() {
+  if (busy || ended || versusOnline || !stateStack.length) return;
+  clearTimeout(botTimer);
+  animationVersion++;
+  let targetState = stateStack.pop();
+  if (versusBot) {
+    while (targetState.turn !== playerSide && stateStack.length > 0) {
+      targetState = stateStack.pop();
+    }
+  }
+  board = targetState.board;
+  turn = targetState.turn;
+  walls = targetState.walls;
+  syncWallMap();
+  stocks = targetState.stocks;
+  castlingRights = targetState.castlingRights;
+  enPassantTarget = targetState.enPassantTarget;
+  halfMoveClock = targetState.halfMoveClock || 0;
+  counts = stocks[turn];
+  lastMove = targetState.lastMove;
+  moveHistory = targetState.moveHistory;
+  captured = targetState.captured;
+  selected = null;
+  previewWall = null;
+  mode = 'move';
+  historySignature = null;
+  renderedHistoryLen = 0;
+  wallsSignature = "";
+  syncControls();
+  render();
+  updateUndoBtn();
+  saveActiveGame();
+  msg('Ход отменён.');
+}
+
+function reset(clearSave = true, customArsenal = null, customTimeSec = null) {
+  if (clearSave && !versusOnline) clearSavedGame();
+  flipped = (versusBot || versusOnline) && playerSide === 'b';
+  moveHistory = [];
+  stateStack = [];
+  captured = {w:[], b:[]};
+  lastMove = null;
+  previewWall = null;
+  enPassantTarget = null;
+  halfMoveClock = 0;
+  ended = false;
+  historySignature = null;
+  renderedHistoryLen = 0;
+  wallsSignature = "";
+  document.getElementById('result').close();
+  document.getElementById('exitConfirm').close();
+  document.getElementById('promotion').close();
+  promotionPending = null;
+  castlingRights = {w:{k:true, r1:true, r8:true}, b:{k:true, r1:true, r8:true}};
+
+  let arsenal = customArsenal || getSelectedArsenal();
+  stocks = {w:{...arsenal}, b:{...arsenal}};
+
+  let seconds = customTimeSec !== null ? customTimeSec : Number(document.getElementById('timeControl').value) * 60;
+  clockEnabled = seconds > 0;
+  remaining = {w:seconds, b:seconds};
+  clockStamp = performance.now();
+  busy = false;
+  animationVersion++;
+  clearTimeout(botTimer);
+
+  board = Array.from({length:8}, () => Array(8).fill(null));
+  let back = ['r','n','b','q','k','b','n','r'];
+  back.forEach((p, c) => {
+    board[0][c] = 'b' + p;
+    board[1][c] = 'bp';
+    board[6][c] = 'wp';
+    board[7][c] = 'w' + p;
+  });
+
+  turn = 'w';
+  mode = 'move';
+  selected = null;
+  walls = [];
+  syncWallMap();
+  counts = stocks[turn];
+  updateUndoBtn();
+  render();
+  msg('Выберите фигуру.');
+  scheduleBot();
+}
+
+function updateMaterialUI() {
+  let scoreW = 0, scoreB = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      let p = board[r][c];
+      if (!p) continue;
+      if (p[0] === 'w') scoreW += pieceVal[p[1]];
+      else scoreB += pieceVal[p[1]];
+    }
+  }
+  let advW = document.getElementById('advW'), advB = document.getElementById('advB');
+  if (scoreW > scoreB) {
+    advW.textContent = '+' + (scoreW - scoreB);
+    advW.hidden = false;
+    advB.hidden = true;
+  } else if (scoreB > scoreW) {
+    advB.textContent = '+' + (scoreB - scoreW);
+    advB.hidden = false;
+    advW.hidden = true;
+  } else {
+    advW.hidden = true;
+    advB.hidden = true;
+  }
+}
+
+function render() {
+  const el = document.getElementById('board');
+  const wCheck = inCheck('w'), bCheck = inCheck('b');
+
+  for (let i = 0; i < 64; i++) {
+    let ri = i >> 3, ci = i & 7;
+    let r = flipped ? 7 - ri : ri, c = flipped ? 7 - ci : ci;
+    let d = cellNodes[i], ref = cellRefs[i];
+    d.dataset.r = r;
+    d.dataset.c = c;
+
+    let cls = 'cell ' + ((r + c) & 1 ? 'dark' : 'light');
+    if (lastMove && lastMove.from[0] === r && lastMove.from[1] === c) cls += ' last-from';
+    if (lastMove && lastMove.to[0] === r && lastMove.to[1] === c) cls += ' last-to';
+    if (selected && selected[0] === r && selected[1] === c) cls += ' selected';
+    if (selected && mode === 'move' && legal(selected, [r, c])) cls += ' target';
+
+    let p = board[r][c];
+    if ((p === 'wk' && wCheck) || (p === 'bk' && bCheck)) cls += ' in-check';
+    if (ref.lastCls !== cls) {
+      d.className = cls;
+      ref.lastCls = cls;
+    }
+
+    let pieceNode = ref.piece;
+    if (p) {
+      let pCls = 'piece ' + (p[0] === 'w' ? 'white' : 'black');
+      if (ref.lastPCls !== pCls) {
+        pieceNode.className = pCls;
+        ref.lastPCls = pCls;
+      }
+      let gTxt = glyph[p];
+      if (ref.lastTxt !== gTxt) {
+        pieceNode.textContent = gTxt;
+        ref.lastTxt = gTxt;
+      }
+      pieceNode.style.visibility = 'visible';
+    } else if (ref.lastTxt !== '') {
+      pieceNode.textContent = '';
+      ref.lastTxt = '';
+    }
+
+    if (ref.cr) {
+      let txt = String(8 - r);
+      if (ref.cr.textContent !== txt) ref.cr.textContent = txt;
+    }
+    if (ref.cc) {
+      let txt = String.fromCharCode(97 + c);
+      if (ref.cc.textContent !== txt) ref.cc.textContent = txt;
+    }
+  }
+
+  // Перерисовка стен только при изменении их состава, ориентации доски или режима пробития
+  let canBreakNow = mode === 'break' && !isRestrictedOpponentTurn();
+  let nextWallSig = `${flipped}:${canBreakNow}:` + walls.map(w => `${w.r}${w.c}${w.o}${w.t}${w.owner}`).join('|');
+  if (nextWallSig !== wallsSignature) {
+    wallsSignature = nextWallSig;
+    el.querySelectorAll('.wall:not(.shatter):not(.preview)').forEach(n => n.remove());
+    const wallFrag = document.createDocumentFragment();
+    walls.forEach((w, idx) => {
+      let d = document.createElement('div');
+      d.className = 'wall ' + w.o + ' ' + (w.t === 'long' ? 'long ' : '') + 'owner-' + (w.owner || 'w');
+      d.dataset.wkey = `${w.r}:${w.c}:${w.o}`;
+      applyWallGeometry(d, w);
+      if (canBreakNow) {
+        d.classList.add('breakable');
+        d.onclick = (e) => { e.stopPropagation(); breakWallAt(idx); };
+      }
+      d.title = canBreakNow ? 'Нажмите, чтобы разрушить стену' : (w.owner === 'b' ? 'Стена чёрных' : 'Стена белых');
+      d.style.outline = w.owner === 'b' ? '2px solid #131b2b' : '2px solid #ffffff';
+      wallFrag.append(d);
+    });
+    el.append(wallFrag);
+  }
+
+  updatePreviewDOM();
+  document.getElementById('turn').textContent = turn === 'w' ? 'Белые' : 'Чёрные';
+
+  let activeStock = (versusBot || versusOnline) ? stocks[playerSide] : counts;
+  document.getElementById('btnShortBadge').textContent = activeStock.short;
+  document.getElementById('btnLongBadge').textContent = activeStock.long;
+  document.getElementById('btnBreakBadge').textContent = activeStock.break;
+
+  if (versusBot || versusOnline) {
+    let pStock = stocks[playerSide], bStock = stocks[botSide()];
+    document.getElementById('shortCount').textContent = `${pStock.short} / ${bStock.short}`;
+    document.getElementById('longCount').textContent = `${pStock.long} / ${bStock.long}`;
+    document.getElementById('breakCount').textContent = `${pStock.break} / ${bStock.break}`;
+  } else {
+    document.getElementById('shortCount').textContent = counts.short;
+    document.getElementById('longCount').textContent = counts.long;
+    document.getElementById('breakCount').textContent = counts.break;
+  }
+  renderHistory();
+  updateMaterialUI();
+  updateUndoBtn();
+}
+
+function pseudo(a, b) {
+  let p = board[a[0]][a[1]], t = board[b[0]][b[1]];
+  if (!p || p[0] !== turn || (t && t[0] === p[0])) return false;
+  let dr = b[0] - a[0], dc = b[1] - a[1], k = p[1];
+
+  if (k === 'p') {
+    let dir = p[0] === 'w' ? -1 : 1, start = p[0] === 'w' ? 6 : 1;
+    if (dc === 0 && dr === dir && !t) return !edgeBlockedRC(a[0], a[1], b[0], b[1]);
+    if (dc === 0 && a[0] === start && dr === 2 * dir && !t && !board[a[0] + dir][a[1]]) {
+      return !edgeBlockedRC(a[0], a[1], a[0] + dir, a[1]) && !edgeBlockedRC(a[0] + dir, a[1], b[0], b[1]);
+    }
+    if (Math.abs(dc) === 1 && dr === dir) {
+      if (t && t[0] !== p[0]) return !stepBlocked(a[0], a[1], b[0], b[1]);
+      if (!t && enPassantTarget && enPassantTarget[0] === b[0] && enPassantTarget[1] === b[1]) {
+        return !stepBlocked(a[0], a[1], b[0], b[1]) && !edgeBlockedRC(a[0], a[1], a[0], b[1]) && !edgeBlockedRC(a[0], b[1], b[0], b[1]);
+      }
+    }
+    return false;
+  }
+
+  if (k === 'n') return (Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2);
+
+  if (k === 'k') {
+    if (Math.max(Math.abs(dr), Math.abs(dc)) === 1 && !stepBlocked(a[0], a[1], b[0], b[1])) return true;
+    if (dr === 0 && Math.abs(dc) === 2 && !inCheck(p[0])) {
+      let row = p[0] === 'w' ? 7 : 0;
+      if (a[0] === row && a[1] === 4) {
+        let rights = castlingRights[p[0]];
+        if (dc === 2 && rights.k && rights.r8 && board[row][7] === p[0] + 'r' && !board[row][5] && !board[row][6]) {
+          let wallsClear = !edgeBlockedRC(row, 4, row, 5) && !edgeBlockedRC(row, 5, row, 6) && !edgeBlockedRC(row, 6, row, 7);
+          return wallsClear && !isSquareAttacked([row, 5], p[0]);
+        }
+        if (dc === -2 && rights.k && rights.r1 && board[row][0] === p[0] + 'r' && !board[row][1] && !board[row][2] && !board[row][3]) {
+          let wallsClear = !edgeBlockedRC(row, 4, row, 3) && !edgeBlockedRC(row, 3, row, 2) && !edgeBlockedRC(row, 2, row, 1) && !edgeBlockedRC(row, 1, row, 0);
+          return wallsClear && !isSquareAttacked([row, 3], p[0]);
+        }
+      }
+    }
+    return false;
+  }
+
+  if (k === 'r' || k === 'b' || k === 'q') {
+    if ((k === 'r' && dr !== 0 && dc !== 0) || (k === 'b' && Math.abs(dr) !== Math.abs(dc)) || (k === 'q' && dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc))) return false;
+    let sr = Math.sign(dr), sc = Math.sign(dc), r = a[0], c = a[1];
+    while (r !== b[0] || c !== b[1]) {
+      let nr = r + sr, nc = c + sc;
+      if (stepBlocked(r, c, nr, nc)) return false;
+      if ((nr !== b[0] || nc !== b[1]) && board[nr][nc]) return false;
+      r = nr; c = nc;
+    }
+    return true;
+  }
+  return false;
+}
+
+function isSquareAttacked(sq, victimColor) {
+  const r = sq[0], c = sq[1], enemy = victimColor === 'w' ? 'b' : 'w';
+
+  for (let i = 0; i < 8; i++) {
+    let nr = r + KNIGHT_DIRS[i][0], nc = c + KNIGHT_DIRS[i][1];
+    if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 && board[nr][nc] === enemy + 'n') return true;
+  }
+
+  let pawnRow = r + (victimColor === 'w' ? -1 : 1);
+  if (pawnRow >= 0 && pawnRow <= 7) {
+    if (c > 0 && board[pawnRow][c - 1] === enemy + 'p' && !stepBlocked(pawnRow, c - 1, r, c)) return true;
+    if (c < 7 && board[pawnRow][c + 1] === enemy + 'p' && !stepBlocked(pawnRow, c + 1, r, c)) return true;
+  }
+
+  for (let i = 0; i < 8; i++) {
+    let nr = r + KING_DIRS[i][0], nc = c + KING_DIRS[i][1];
+    if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 && board[nr][nc] === enemy + 'k' && !stepBlocked(nr, nc, r, c)) return true;
+  }
+
+  for (let i = 0; i < 4; i++) {
+    let sr = ORTHO_DIRS[i][0], sc = ORTHO_DIRS[i][1], cr = r, cc = c;
+    while (true) {
+      let nr = cr + sr, nc = cc + sc;
+      if (nr < 0 || nr > 7 || nc < 0 || nc > 7 || edgeBlockedRC(cr, cc, nr, nc)) break;
+      let p = board[nr][nc];
+      if (p) {
+        if (p[0] === enemy && (p[1] === 'r' || p[1] === 'q')) return true;
+        break;
+      }
+      cr = nr; cc = nc;
+    }
+  }
+
+  for (let i = 0; i < 4; i++) {
+    let sr = DIAG_DIRS[i][0], sc = DIAG_DIRS[i][1], cr = r, cc = c;
+    while (true) {
+      let nr = cr + sr, nc = cc + sc;
+      if (nr < 0 || nr > 7 || nc < 0 || nc > 7 || stepBlocked(cr, cc, nr, nc)) break;
+      let p = board[nr][nc];
+      if (p) {
+        if (p[0] === enemy && (p[1] === 'b' || p[1] === 'q')) return true;
+        break;
+      }
+      cr = nr; cc = nc;
+    }
+  }
+
+  return false;
+}
+
+function inCheck(color) {
+  const target = color + 'k';
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (board[r][c] === target) return isSquareAttacked([r, c], color);
+    }
+  }
+  return true;
+}
+
+function legal(a, b) {
+  let p = board[a[0]][a[1]];
+  if (!p) return false;
+
+  if (p[1] === 'k' && Math.abs(b[1] - a[1]) === 2) {
+    if (!pseudo(a, b)) return false;
+    let row = a[0], step = b[1] > a[1] ? 1 : -1;
+    let mid = [row, a[1] + step];
+    let rookFromCol = b[1] > a[1] ? 7 : 0, rookToCol = b[1] > a[1] ? 5 : 3;
+
+    board[mid[0]][mid[1]] = p;
+    board[a[0]][a[1]] = null;
+    let safeMid = !inCheck(p[0]);
+    board[mid[0]][mid[1]] = null;
+
+    if (!safeMid) {
+      board[a[0]][a[1]] = p;
+      return false;
+    }
+
+    let rook = board[row][rookFromCol];
+    board[b[0]][b[1]] = p;
+    board[row][rookToCol] = rook;
+    board[row][rookFromCol] = null;
+    let safeFinal = !inCheck(p[0]);
+
+    board[a[0]][a[1]] = p;
+    board[b[0]][b[1]] = null;
+    board[row][rookFromCol] = rook;
+    board[row][rookToCol] = null;
+    return safeFinal;
+  }
+
+  if (board[b[0]][b[1]]?.[1] === 'k' || !pseudo(a, b)) return false;
+  let color = p[0], from = board[a[0]][a[1]], to = board[b[0]][b[1]];
+  
+  let isEnPassant = p[1] === 'p' && enPassantTarget && b[0] === enPassantTarget[0] && b[1] === enPassantTarget[1] && !to;
+  let capturedPawn = null;
+  if (isEnPassant) {
+    capturedPawn = board[a[0]][b[1]];
+    board[a[0]][b[1]] = null;
+  }
+
+  board[b[0]][b[1]] = from;
+  board[a[0]][a[1]] = null;
+  let safe = !inCheck(color);
+  
+  board[a[0]][a[1]] = from;
+  board[b[0]][b[1]] = to;
+  if (isEnPassant) {
+    board[a[0]][b[1]] = capturedPawn;
+  }
+  return safe;
+}
+
+function boardDisconnected() {
+  let start = null, totalPieces = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (board[r][c]) {
+        totalPieces++;
+        if (!start) start = [r, c];
+        let hasExit = false;
+        for (let i = 0; i < 4; i++) {
+          let nr = r + ORTHO_DIRS[i][0], nc = c + ORTHO_DIRS[i][1];
+          if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 && !edgeBlockedRC(r, c, nr, nc)) {
+            hasExit = true;
+            break;
+          }
+        }
+        if (!hasExit) return true;
+      }
+    }
+  }
+  if (!start) return false;
+  const seen = new Uint8Array(64);
+  seen[(start[0] << 3) + start[1]] = 1;
+  const queue = [start];
+  let reachedPieces = 0;
+  for (let i = 0; i < queue.length; i++) {
+    let [rr, cc] = queue[i];
+    if (board[rr][cc]) reachedPieces++;
+    for (let d = 0; d < 4; d++) {
+      let nr = rr + ORTHO_DIRS[d][0], nc = cc + ORTHO_DIRS[d][1];
+      let idx = (nr << 3) + nc;
+      if (nr < 0 || nr > 7 || nc < 0 || nc > 7 || seen[idx] || edgeBlockedRC(rr, cc, nr, nc)) continue;
+      seen[idx] = 1;
+      queue.push([nr, nc]);
+    }
+  }
+  return reachedPieces < totalPieces;
+}
+
+function buildWallSegments(wr, wc, o, wallMode) {
+  if (wr < 0 || wc < 0 || (o === 'h' && wr >= 7) || (o === 'v' && wc >= 7)) return null;
+  let segments = [{r: wr, c: wc, o, t: wallMode}];
+  if (wallMode === 'long') {
+    if (o === 'h') {
+      if (wc >= 7) return null;
+      segments.push({r: wr, c: wc + 1, o, t: wallMode});
+    } else {
+      if (wr >= 7) return null;
+      segments.push({r: wr + 1, c: wc, o, t: wallMode});
+    }
+  }
+  if (segments.some(s => hasWall(s.r, s.c, s.o))) return null;
+  return segments;
+}
+
+function toggleSegmentsInMap(segments, val) {
+  for (let i = 0; i < segments.length; i++) {
+    let s = segments[i];
+    wallMap[(s.o === 'v' ? 64 : 0) + (s.r << 3) + s.c] = val;
+  }
+}
+
+function validateWallPlacement(wr, wc, o, wallMode, color = turn) {
+  if (!stocks[color][wallMode]) return {valid: false, reason: 'Стены этого типа закончились.'};
+  let segments = buildWallSegments(wr, wc, o, wallMode);
+  if (!segments) return {valid: false, reason: 'Граница уже занята или нет места.'};
+  toggleSegmentsInMap(segments, 1);
+  let ownCheck = inCheck(color);
+  let disconnected = !ownCheck && boardDisconnected();
+  toggleSegmentsInMap(segments, 0);
+  if (ownCheck) return {valid: false, segments, reason: 'Король под шахом!'};
+  if (disconnected) return {valid: false, segments, reason: 'Нельзя изолировать фигуры.'};
+  return {valid: true, segments};
+}
+
+function placeValidatedWall(wr, wc, o, wallMode) {
+  let check = validateWallPlacement(wr, wc, o, wallMode, turn);
+  if (!check.valid) {
+    msg(check.reason);
+    return false;
+  }
+  saveUndoState();
+  if (versusOnline && turn === playerSide) {
+    sendNet({type: 'wall', wr, wc, o, wallMode, remTime: remaining[playerSide]});
+  }
+  enPassantTarget = null;
+  halfMoveClock++;
+  previewWall = null;
+  let gid = wallGroupSeq++;
+  check.segments.forEach(w => { w.owner = turn; w.gid = gid; });
+  walls.push(...check.segments);
+  syncWallMap();
+  counts[wallMode]--;
+  moveHistory.push({color: turn, wall: true, wallType: wallMode, o, r: wr, c: wc});
+  sfx('wall');
+  animateWalls(check.segments, 'Стена установлена.');
+  return true;
+}
+
+function executeWallBreak(idx, text, isRemoteOrBot = false) {
+  let w = walls[idx];
+  if (!w) return;
+  if (!isRemoteOrBot) {
+    saveUndoState();
+    if (versusOnline && turn === playerSide) sendNet({type: 'break', idx, remTime: remaining[playerSide]});
+  }
+  enPassantTarget = null;
+  halfMoveClock++;
+  let brokenGid = w.gid;
+  let brokenWallCopy = {...w};
+  walls.splice(idx, 1);
+  if (brokenGid) {
+    walls.forEach(rem => { if (rem.gid === brokenGid) rem.t = 'short'; });
+  }
+  syncWallMap();
+  counts.break--;
+  moveHistory.push({color: turn, broke: true, r: brokenWallCopy.r, c: brokenWallCopy.c});
+  sfx('break');
+  animateBreakWall(brokenWallCopy, text);
+}
+
+function breakWallAt(idx) {
+  if (busy || ended || mode !== 'break' || isRestrictedOpponentTurn()) return;
+  if (counts.break <= 0) { msg('Заряды пробития закончились!'); return; }
+  let w = walls[idx];
+  if (!w) return;
+  toggleSegmentsInMap([w], 0);
+  let ownCheck = inCheck(turn);
+  toggleSegmentsInMap([w], 1);
+  if (ownCheck) {
+    msg('Нельзя: ваш король под шахом!');
+    return;
+  }
+  executeWallBreak(idx, 'Стена разрушена!', false);
+}
+
+function clickCell(r, c, e) {
+  if (busy || ended || isRestrictedOpponentTurn()) return;
+
+  if (mode === 'break') {
+    msg('Нажмите прямо на цветную линию стены.');
+    return;
+  }
+
+  if (mode === 'move') {
+    if (board[r][c]?.[0] === turn) {
+      selected = (selected && selected[0] === r && selected[1] === c) ? null : [r, c];
+      render();
+      return;
+    }
+    if (selected && legal(selected, [r, c])) {
+      saveUndoState();
+      animateMove(selected, [r, c], 'Ход сделан.');
+    } else if (selected) {
+      selected = null;
+      render();
+      msg('Недопустимый ход.');
+    }
+    return;
+  }
+
+  let hovered = e ? computeHoveredWall(e.clientX, e.clientY, mode) : previewWall;
+  if (lastPointerType !== 'mouse') {
+    if (hovered && (!previewWall || previewWall.key !== hovered.key)) {
+      previewWall = hovered;
+      updatePreviewDOM();
+      msg(hovered.valid ? 'Нажмите ещё раз для установки стены.' : hovered.reason);
+      return;
+    }
+  }
+
+  let targetWall = hovered || previewWall;
+  if (targetWall) {
+    placeValidatedWall(targetWall.wr, targetWall.wc, targetWall.o, mode);
+  }
+}
+
+function endTurn(text) {
+  tickClock();
+  if (ended) return;
+  turn = turn === 'w' ? 'b' : 'w';
+  counts = stocks[turn];
+  clockStamp = performance.now();
+  selected = null;
+  previewWall = null;
+  mode = 'move';
+  syncControls();
+  let checkNow = inCheck(turn);
+  if (checkNow) sfx('check');
+  render();
+  saveActiveGame();
+  msg(checkNow ? 'Шах! ' + text : text);
+  checkResult();
+  scheduleBot();
+}
+
+function formatHistoryItem(m, i) {
+  let prefix = Math.floor(i / 2 + 1) + (m.color === 'w' ? '. ' : '… ');
+  if (m.wall) {
+    let coord = String.fromCharCode(97 + m.c) + (8 - m.r);
+    return prefix + (m.wallType === 'long' ? '▰▰ ' : '▰ ') + coord;
+  }
+  if (m.broke) {
+    let coord = String.fromCharCode(97 + m.c) + (8 - m.r);
+    return prefix + '💥 ' + coord;
+  }
+  if (m.castle) return prefix + m.castle;
+  let promoSuffix = m.promote ? '=' + glyph[m.color + m.promote] : '';
+  return prefix + glyph[m.color + m.piece] + ' ' + String.fromCharCode(97 + m.from[1]) + (8 - m.from[0]) + (m.capture ? '×' : '–') + String.fromCharCode(97 + m.to[1]) + (8 - m.to[0]) + promoSuffix;
+}
+
+function renderHistory() {
+  let lastM = moveHistory[moveHistory.length - 1];
+  let signature = moveHistory.length + ":" + (lastM?.promote || '') + ":" + captured.w.join("") + ":" + captured.b.join("");
+  if (signature === historySignature) return;
+  historySignature = signature;
+
+  let list = document.getElementById('moveHistory');
+  if (!list) return;
+
+  if (moveHistory.length < renderedHistoryLen) {
+    list.innerHTML = '';
+    renderedHistoryLen = 0;
+  }
+  for (let i = renderedHistoryLen; i < moveHistory.length; i++) {
+    let m = moveHistory[i];
+    let li = document.createElement('li');
+    li.textContent = formatHistoryItem(m, i);
+    li.title = (m.color === 'w' ? 'Белые' : 'Чёрные');
+    list.append(li);
+  }
+  if (moveHistory.length > 0 && list.lastElementChild) {
+    let idx = moveHistory.length - 1;
+    list.lastElementChild.textContent = formatHistoryItem(moveHistory[idx], idx);
+  }
+  renderedHistoryLen = moveHistory.length;
+  list.scrollLeft = list.scrollWidth;
+
+  document.getElementById('capturedW').textContent = captured.w.length ? captured.w.join('') : '—';
+  document.getElementById('capturedB').textContent = captured.b.length ? captured.b.join('') : '—';
+}
+
+function msg(x) { document.getElementById('status').textContent = x; }
+
+function syncControls() {
+  ['short','long','breakMode'].forEach(id => {
+    let mName = id === 'breakMode' ? 'break' : id;
+    let b = document.getElementById(id);
+    b.classList.toggle('active', mode === mName);
+    b.setAttribute('aria-pressed', String(mode === mName));
+  });
+}
+
+function toggleModeButton(id) {
+  if (busy || ended || document.getElementById('game').hidden || isRestrictedOpponentTurn()) return;
+  let targetMode = id === 'breakMode' ? 'break' : id;
+  if (targetMode !== 'move' && counts[targetMode] <= 0) {
+    msg(targetMode === 'break' ? 'Ломы закончились!' : 'Стены закончились!');
+    return;
+  }
+  mode = mode === targetMode ? 'move' : targetMode;
+  selected = null;
+  previewWall = null;
+  syncControls();
+  render();
+  if (mode === 'move') msg('Выберите фигуру.');
+  else if (mode === 'break') msg('Нажмите на стену для сноса.');
+  else msg('Кликните на границу клеток.');
+}
+
+['short','long','breakMode'].forEach(id => document.getElementById(id).onclick = () => toggleModeButton(id));
+
+window.addEventListener('keydown', e => {
+  if (document.getElementById('game').hidden || e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (e.key === '1') toggleModeButton('short');
+  else if (e.key === '2') toggleModeButton('long');
+  else if (e.key === '3') toggleModeButton('breakMode');
+  else if (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'я') undoMove();
+  else if (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'а') document.getElementById('flipBoard').click();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    clockStamp = performance.now();
+  } else {
+    saveActiveGame();
+  }
+});
+
+document.getElementById('undoBtn').onclick = undoMove;
+document.getElementById('soundToggle').onclick = () => {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+  savePrefs();
+};
+
+function showGame() {
+  document.getElementById('menu').hidden = true;
+  document.getElementById('game').hidden = false;
+  clockStamp = performance.now();
+  syncControls();
+  scheduleBot();
+}
+
+document.getElementById('start').onclick = () => {
+  closeNetSession();
+  versusBot = false;
+  reset(true);
+  showGame();
+};
+
+document.getElementById('botStart').onclick = () => {
+  closeNetSession();
+  let sc = document.getElementById('sideChoice').value;
+  let desc = sc === 'w' ? 'Ты играешь белыми. Бот — чёрными.' : sc === 'b' ? 'Ты играешь чёрными. Бот — белыми (ходит первым).' : 'Цвет фигур определится случайно.';
+  document.getElementById('botSideInfo').textContent = desc;
+  document.getElementById('menu').hidden = true;
+  document.getElementById('botSetup').hidden = false;
+};
+
+document.getElementById('botBack').onclick = () => {
+  document.getElementById('botSetup').hidden = true;
+  document.getElementById('menu').hidden = false;
+};
+
+document.querySelectorAll('[data-level]').forEach(button => button.onclick = () => {
+  closeNetSession();
+  versusBot = true;
+  difficulty = button.dataset.level;
+  let choice = document.getElementById('sideChoice').value;
+  playerSide = choice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : choice;
+  document.getElementById('botSetup').hidden = true;
+  reset(true);
+  showGame();
+  if (turn === playerSide) {
+    msg('Уровень: ' + ({easy:'лёгкий', medium:'средний', hard:'сложный', master:'👑 Гроссмейстер'}[difficulty]));
+  }
+});
+
+document.getElementById('resume').onclick = () => {
+  closeNetSession();
+  if (moveHistory.length === 0 && walls.length === 0 && hasSavedGameInStorage()) {
+    loadSavedGame();
+  }
+  showGame();
+};
+
+document.getElementById('rulesButton').onclick = () => {
+  let rules = document.getElementById('rules');
+  rules.hidden = !rules.hidden;
+  document.getElementById('rulesButton').setAttribute('aria-expanded', String(!rules.hidden));
+};
+
+document.getElementById('reset').onclick = () => {
+  if (versusOnline) return;
+  reset(true);
+  syncControls();
+};
+
+function scheduleBot() {
+  clearTimeout(botTimer);
+  if (!ended && versusBot && turn === botSide() && !document.getElementById('game').hidden) {
+    msg(difficulty === 'master' ? '👑 Гроссмейстер считает…' : 'Бот думает…');
+    botTimer = setTimeout(() => requestAnimationFrame(botPlay), difficulty === 'master' ? 90 : 260);
+  }
+}
+
+// ============================================================================
+// СВЕРХБЫСТРЫЙ ДВИЖОК С АКТИВНОЙ СТРАТЕГИЕЙ СТЕН И ЛОМА
+// ============================================================================
+
+function evaluateBoard(perspective) {
+  let score = 0, nonPawnMaterial = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      let p = board[r][c];
+      if (p && p[1] !== 'p' && p[1] !== 'k') nonPawnMaterial += engineVal[p[1]];
+    }
+  }
+  const isEndgame = nonPawnMaterial <= 2600;
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      let p = board[r][c];
+      if (!p) continue;
+      let color = p[0], k = p[1];
+      let val = engineVal[k];
+      let pstRow = color === 'w' ? r : 7 - r;
+      let table = (k === 'k' && isEndgame) ? pst.kEnd : pst[k];
+      let pos = table ? table[pstRow][c] : 0;
+
+      if (k === 'p') {
+        let dir = color === 'w' ? -1 : 1;
+        let nr = r + dir;
+        if (nr >= 0 && nr <= 7 && edgeBlockedRC(r, c, nr, c)) {
+          let rankAdv = color === 'w' ? (6 - r) : (r - 1);
+          pos -= (24 + rankAdv * 8);
+        }
+      } else if (k === 'r' || k === 'q') {
+        let blockedSides = 0;
+        for (let i = 0; i < 4; i++) {
+          let nr = r + ORTHO_DIRS[i][0], nc = c + ORTHO_DIRS[i][1];
+          if (nr < 0 || nr > 7 || nc < 0 || nc > 7 || edgeBlockedRC(r, c, nr, nc)) blockedSides++;
+        }
+        pos -= blockedSides * (k === 'q' ? 22 : 16);
+      } else if (k === 'b') {
+        let blockedDiag = 0;
+        for (let i = 0; i < 4; i++) {
+          let nr = r + DIAG_DIRS[i][0], nc = c + DIAG_DIRS[i][1];
+          if (nr < 0 || nr > 7 || nc < 0 || nc > 7 || stepBlocked(r, c, nr, nc)) blockedDiag++;
+        }
+        pos -= blockedDiag * 14;
+      } else if (k === 'k') {
+        let openSteps = 0;
+        for (let i = 0; i < 8; i++) {
+          let nr = r + KING_DIRS[i][0], nc = c + KING_DIRS[i][1];
+          if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 && !board[nr][nc] && !stepBlocked(r, c, nr, nc)) openSteps++;
+        }
+        if (openSteps === 0) pos -= 45;
+        else if (openSteps === 1) pos -= 20;
+      }
+
+      if (color === perspective) score += val + pos;
+      else score -= val + pos;
+    }
+  }
+
+  if (inCheck(perspective === 'w' ? 'b' : 'w')) score += 40;
+  if (inCheck(perspective)) score -= 40;
+  return score;
+}
+
+function makeSimMove(m) {
+  let fromP = board[m.a[0]][m.a[1]], takenP = board[m.b[0]][m.b[1]];
+  let prevEP = enPassantTarget, prevCastle = {
+    w: {...castlingRights.w}, b: {...castlingRights.b}
+  };
+  let epCapturedPawn = null, castleRook = null;
+
+  if (m.isEP) {
+    epCapturedPawn = board[m.a[0]][m.b[1]];
+    board[m.a[0]][m.b[1]] = null;
+  }
+  if (fromP[1] === 'k' && Math.abs(m.b[1] - m.a[1]) === 2) {
+    let row = m.a[0], rFrom = m.b[1] > m.a[1] ? 7 : 0, rTo = m.b[1] > m.a[1] ? 5 : 3;
+    castleRook = {row, rFrom, rTo, piece: board[row][rFrom]};
+    board[row][rTo] = castleRook.piece;
+    board[row][rFrom] = null;
+  }
+
+  board[m.b[0]][m.b[1]] = (fromP[1] === 'p' && (m.b[0] === 0 || m.b[0] === 7)) ? fromP[0] + 'q' : fromP;
+  board[m.a[0]][m.a[1]] = null;
+
+  if (fromP[1] === 'k') castlingRights[fromP[0]].k = false;
+  if (fromP[1] === 'p' && Math.abs(m.b[0] - m.a[0]) === 2) {
+    enPassantTarget = [(m.a[0] + m.b[0]) / 2, m.a[1]];
+  } else {
+    enPassantTarget = null;
+  }
+
+  let prevTurn = turn;
+  turn = turn === 'w' ? 'b' : 'w';
+  return {fromP, takenP, prevEP, prevCastle, epCapturedPawn, castleRook, prevTurn, a: m.a, b: m.b, isEP: m.isEP};
+}
+
+function unmakeSimMove(u) {
+  turn = u.prevTurn;
+  enPassantTarget = u.prevEP;
+  castlingRights = u.prevCastle;
+  board[u.a[0]][u.a[1]] = u.fromP;
+  board[u.b[0]][u.b[1]] = u.takenP;
+  if (u.isEP) board[u.a[0]][u.b[1]] = u.epCapturedPawn;
+  if (u.castleRook) {
+    board[u.castleRook.row][u.castleRook.rFrom] = u.castleRook.piece;
+    board[u.castleRook.row][u.castleRook.rTo] = null;
+  }
+}
+
+function generateSortedMoves(color, capturesOnly = false) {
+  let saved = turn;
+  turn = color;
+  let list = [];
+
+  function tryPush(r, c, rr, cc, k) {
+    let target = board[rr][cc];
+    if (target && (target[0] === color || target[1] === 'k')) return;
+    let isEP = k === 'p' && enPassantTarget && rr === enPassantTarget[0] && cc === enPassantTarget[1] && !target;
+    let isPromo = k === 'p' && (rr === 0 || rr === 7);
+    if (capturesOnly && !target && !isEP && !isPromo) return;
+    if (!legal([r, c], [rr, cc])) return;
+
+    let orderScore = 0;
+    if (target) orderScore += engineVal[target[1]] * 10 - engineVal[k];
+    if (isEP) orderScore += 900;
+    if (isPromo) orderScore += 800;
+    let pstRow = color === 'w' ? rr : 7 - rr;
+    let pstFrom = color === 'w' ? r : 7 - r;
+    if (pst[k]) orderScore += (pst[k][pstRow][cc] - pst[k][pstFrom][c]);
+    list.push({type: 'move', a: [r, c], b: [rr, cc], isEP, orderScore});
+  }
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      let p = board[r][c];
+      if (p?.[0] !== color) continue;
+      let k = p[1];
+
+      if (k === 'p') {
+        let dir = color === 'w' ? -1 : 1, nr = r + dir;
+        if (nr >= 0 && nr <= 7) {
+          if (!capturesOnly || nr === 0 || nr === 7) {
+            if (!board[nr][c]) {
+              tryPush(r, c, nr, c, k);
+              let start = color === 'w' ? 6 : 1;
+              if (r === start && !board[r + 2 * dir][c]) tryPush(r, c, r + 2 * dir, c, k);
+            }
+          }
+          if (c > 0) tryPush(r, c, nr, c - 1, k);
+          if (c < 7) tryPush(r, c, nr, c + 1, k);
+        }
+      } else if (k === 'n') {
+        for (let i = 0; i < 8; i++) {
+          let nr = r + KNIGHT_DIRS[i][0], nc = c + KNIGHT_DIRS[i][1];
+          if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) tryPush(r, c, nr, nc, k);
+        }
+      } else if (k === 'k') {
+        for (let i = 0; i < 8; i++) {
+          let nr = r + KING_DIRS[i][0], nc = c + KING_DIRS[i][1];
+          if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) tryPush(r, c, nr, nc, k);
+        }
+        if (!capturesOnly && (r === 7 || r === 0) && c === 4) {
+          tryPush(r, 4, r, 6, k);
+          tryPush(r, 4, r, 2, k);
+        }
+      } else {
+        let dirs = k === 'r' ? ORTHO_DIRS : (k === 'b' ? DIAG_DIRS : ALL_DIRS);
+        for (let i = 0; i < dirs.length; i++) {
+          let sr = dirs[i][0], sc = dirs[i][1], cr = r, cc = c;
+          while (true) {
+            let nr = cr + sr, nc = cc + sc;
+            if (nr < 0 || nr > 7 || nc < 0 || nc > 7 || stepBlocked(cr, cc, nr, nc)) break;
+            tryPush(r, c, nr, nc, k);
+            if (board[nr][nc]) break;
+            cr = nr; cc = nc;
+          }
+        }
+      }
+    }
+  }
+  turn = saved;
+  list.sort((x, y) => y.orderScore - x.orderScore);
+  return list;
+}
+
+function quiescence(alpha, beta, perspective, qDepth = 0) {
+  let standPat = evaluateBoard(turn);
+  if (standPat >= beta) return beta;
+  if (alpha < standPat) alpha = standPat;
+  if (qDepth >= 4) return standPat;
+
+  let captures = generateSortedMoves(turn, true);
+  for (let i = 0; i < captures.length; i++) {
+    let u = makeSimMove(captures[i]);
+    let score = -quiescence(-beta, -alpha, perspective, qDepth + 1);
+    unmakeSimMove(u);
+    if (score >= beta) return beta;
+    if (score > alpha) alpha = score;
+  }
+  return alpha;
+}
+
+function alphaBeta(depth, alpha, beta, perspective) {
+  if (depth <= 0) return quiescence(alpha, beta, perspective, 0);
+
+  let moves = generateSortedMoves(turn, false);
+  if (moves.length === 0) {
+    if (inCheck(turn)) return -18000 - depth * 100;
+    return 0;
+  }
+
+  let best = -Infinity;
+  let limit = depth >= 2 ? Math.min(moves.length, 20) : moves.length;
+  for (let i = 0; i < limit; i++) {
+    let u = makeSimMove(moves[i]);
+    let score = -alphaBeta(depth - 1, -beta, -alpha, perspective);
+    unmakeSimMove(u);
+    if (score > best) best = score;
+    if (score > alpha) alpha = score;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+
+function evaluateImmediateThreats(color) {
+  let enemy = color === 'w' ? 'b' : 'w';
+  let threatSum = inCheck(color) ? 600 : 0;
+  let enemyCaptures = generateSortedMoves(enemy, true);
+  let attackedSquares = new Uint8Array(64);
+  for (let i = 0; i < enemyCaptures.length; i++) {
+    let m = enemyCaptures[i];
+    let idx = (m.b[0] << 3) + m.b[1];
+    if (!attackedSquares[idx]) {
+      attackedSquares[idx] = 1;
+      let victim = board[m.b[0]][m.b[1]];
+      if (victim) threatSum += engineVal[victim[1]];
+    }
+  }
+  return threatSum;
+}
+
+function botPlay() {
+  if (ended || !versusBot || turn !== botSide() || document.getElementById('game').hidden) return;
+  const bSide = botSide(), pSide = playerSide;
+
+  let moves = generateSortedMoves(bSide, false);
+
+  if (difficulty === 'easy') {
+    if (moves.length && Math.random() < 0.85) {
+      let topPool = moves.slice(0, Math.min(moves.length, 6));
+      let chosen = topPool[Math.floor(Math.random() * topPool.length)];
+      animateMove(chosen.a, chosen.b, 'Бот сделал ход.');
+      return;
+    }
+  }
+
+  let searchDepth = difficulty === 'master' ? 2 : (difficulty === 'hard' ? 1 : 0);
+  let bestMove = null, bestMoveScore = -Infinity;
+
+  let movePool = difficulty === 'master' ? moves.slice(0, 24) : moves.slice(0, 16);
+  for (let i = 0; i < movePool.length; i++) {
+    let m = movePool[i];
+    let u = makeSimMove(m);
+    let score = -alphaBeta(searchDepth, -Infinity, Infinity, bSide);
+    if (difficulty === 'medium') score += (Math.random() * 35 - 17);
+    else if (difficulty === 'hard') score += (Math.random() * 10 - 5);
+    unmakeSimMove(u);
+    m.evalScore = score;
+    if (score > bestMoveScore) {
+      bestMoveScore = score;
+      bestMove = m;
+    }
+  }
+
+  let bestBreakIdx = -1, bestBreakScore = -Infinity;
+  if (counts.break > 0 && walls.length > 0 && difficulty !== 'easy') {
+    let baseThreatOnEnemy = evaluateImmediateThreats(pSide);
+    let baseThreatOnBot = evaluateImmediateThreats(bSide);
+    let breakCandidates = [];
+
+    for (let i = 0; i < walls.length; i++) {
+      let w = walls[i];
+      toggleSegmentsInMap([w], 0);
+      if (!inCheck(bSide)) {
+        let newThreatOnEnemy = evaluateImmediateThreats(pSide);
+        let newThreatOnBot = evaluateImmediateThreats(bSide);
+        let delta = (newThreatOnEnemy - baseThreatOnEnemy) - (newThreatOnBot - baseThreatOnBot);
+        if (delta > 80 || !moves.length) {
+          breakCandidates.push({idx: i, delta});
+        }
+      }
+      toggleSegmentsInMap([w], 1);
+    }
+
+    breakCandidates.sort((a, b) => b.delta - a.delta);
+    for (let cand of breakCandidates.slice(0, 4)) {
+      let w = walls[cand.idx];
+      toggleSegmentsInMap([w], 0);
+      let prevTurn = turn;
+      turn = pSide;
+      let scoreAfterBreak = -alphaBeta(Math.max(1, searchDepth), -Infinity, Infinity, bSide) + cand.delta * 0.15;
+      turn = prevTurn;
+      toggleSegmentsInMap([w], 1);
+      if (scoreAfterBreak > bestBreakScore) {
+        bestBreakScore = scoreAfterBreak;
+        bestBreakIdx = cand.idx;
+      }
+    }
+  }
+
+  if (bestBreakIdx !== -1 && (bestBreakScore > bestMoveScore + 40 || !moves.length)) {
+    executeWallBreak(bestBreakIdx, 'Бот пробил стену!', true);
+    return;
+  }
+
+  let bestWall = null, bestWallScore = -Infinity;
+  let baseThreatOnBot = evaluateImmediateThreats(bSide);
+  let baseThreatOnEnemy = evaluateImmediateThreats(pSide);
+  let baseStaticEval = evaluateBoard(bSide);
+
+  if ((counts.short > 0 || counts.long > 0) && (!moves.length || moveHistory.length >= 2)) {
+    let wallCandidates = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        for (const o of ['h', 'v']) {
+          for (const t of ['short', 'long']) {
+            if (!counts[t]) continue;
+            const add = buildWallSegments(r, c, o, t);
+            if (!add) continue;
+            toggleSegmentsInMap(add, 1);
+            if (!inCheck(bSide) && !boardDisconnected()) {
+              let newThreatOnBot = evaluateImmediateThreats(bSide);
+              let newThreatOnEnemy = evaluateImmediateThreats(pSide);
+              let newStaticEval = evaluateBoard(bSide);
+
+              let threatSaved = (baseThreatOnBot - newThreatOnBot);
+              let ownAttackLost = Math.max(0, baseThreatOnEnemy - newThreatOnEnemy);
+              let positionalGain = (newStaticEval - baseStaticEval);
+
+              let heuristic = threatSaved * 1.15 + positionalGain * 1.3 - ownAttackLost * 0.75;
+
+              for (let seg of add) {
+                let p1 = board[seg.r]?.[seg.c];
+                let p2 = seg.o === 'h' ? board[seg.r + 1]?.[seg.c] : board[seg.r]?.[seg.c + 1];
+                for (let adj of [p1, p2]) {
+                  if (!adj) continue;
+                  if (adj[0] === pSide) {
+                    if (adj[1] === 'q' || adj[1] === 'r') heuristic += 32;
+                    else if (adj[1] === 'k' || adj[1] === 'b') heuristic += 24;
+                    else if (adj[1] === 'p' && seg.o === 'h') heuristic += 18;
+                  } else if (adj[0] === bSide && (adj[1] === 'q' || adj[1] === 'r')) {
+                    if (threatSaved <= 0) heuristic -= 18;
+                  }
+                }
+              }
+
+              if (heuristic >= 22 || !moves.length) {
+                wallCandidates.push({add, t, r, c, o, heuristic, threatSaved});
+              }
+            }
+            toggleSegmentsInMap(add, 0);
+          }
+        }
+      }
+    }
+
+    wallCandidates.sort((a, b) => b.heuristic - a.heuristic);
+    for (let cand of wallCandidates.slice(0, 6)) {
+      toggleSegmentsInMap(cand.add, 1);
+      let prevTurn = turn;
+      turn = pSide;
+      let rawMinimax = -alphaBeta(Math.max(1, searchDepth - 1), -Infinity, Infinity, bSide);
+      turn = prevTurn;
+      toggleSegmentsInMap(cand.add, 0);
+
+      let totalWallScore = rawMinimax + Math.min(75, cand.heuristic * 0.45);
+      if (totalWallScore > bestWallScore) {
+        bestWallScore = totalWallScore;
+        bestWall = cand;
+      }
+    }
+  }
+
+  if (bestWall && (!moves.length || bestWallScore >= bestMoveScore - 6)) {
+    enPassantTarget = null;
+    halfMoveClock++;
+    let gid = wallGroupSeq++;
+    bestWall.add.forEach(w => { w.owner = bSide; w.gid = gid; });
+    walls.push(...bestWall.add);
+    syncWallMap();
+    counts[bestWall.t]--;
+    moveHistory.push({color: bSide, wall: true, wallType: bestWall.t, o: bestWall.o, r: bestWall.r, c: bestWall.c});
+    sfx('wall');
+    animateWalls(bestWall.add, 'Бот поставил тактическую стену.');
+    return;
+  }
+
+  if (!moves.length) {
+    checkResult();
+    return;
+  }
+
+  animateMove(bestMove.a, bestMove.b, 'Бот сделал ход.');
+}
+
+function cellAt(a) {
+  let vr = flipped ? 7 - a[0] : a[0];
+  let vc = flipped ? 7 - a[1] : a[1];
+  return cellNodes[(vr << 3) + vc];
+}
+
+function ghost(piece, rect) {
+  let g = document.createElement('div');
+  g.className = 'drag-ghost ' + (piece[0] === 'w' ? 'white' : 'black');
+  g.textContent = glyph[piece];
+  Object.assign(g.style, {
+    left: rect.left + 'px',
+    top: rect.top + 'px',
+    width: rect.width + 'px',
+    height: rect.height + 'px',
+    fontSize: getComputedStyle(cellNodes[0]).fontSize
+  });
+  document.body.append(g);
+  return g;
+}
+
+function animateBreakWall(brokenWall, text) {
+  busy = true;
+  selected = null;
+  render();
+  let token = animationVersion;
+  const boardNode = document.getElementById('board');
+  if (!boardNode || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    busy = false;
+    endTurn(text);
+    return;
+  }
+  let fx = document.createElement('div');
+  fx.className = 'wall shatter ' + brokenWall.o;
+  applyWallGeometry(fx, brokenWall);
+  boardNode.append(fx);
+  let baseTr = brokenWall.o === 'h' ? 'translateY(-50%)' : 'translateX(-50%)';
+  fx.animate([
+    {opacity: 1, transform: baseTr + ' scale(1.35)'},
+    {opacity: 0, transform: baseTr + ' scale(0.2)'}
+  ], {duration: 240, easing: 'ease-out'}).finished.then(() => {
+    fx.remove();
+    if (token !== animationVersion) return;
+    busy = false;
+    endTurn(text);
+  });
+}
+
+function animateWalls(added, text) {
+  busy = true;
+  selected = null;
+  render();
+  let token = animationVersion;
+  const boardNode = document.getElementById('board');
+  let animations = added.map(w => {
+    let node = boardNode.querySelector(`.wall[data-wkey="${w.r}:${w.c}:${w.o}"]`);
+    if (!node) return Promise.resolve();
+    let baseTr = w.o === 'h' ? 'translateY(-50%)' : 'translateX(-50%)';
+    return node.animate([{opacity:0, transform: baseTr + ' scale(.55)'}, {opacity:1, transform: baseTr + ' scale(1)'}], {
+      duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180,
+      easing: 'cubic-bezier(.22,.61,.36,1)'
+    }).finished;
+  });
+  Promise.all(animations).then(() => {
+    if (token !== animationVersion) return;
+    busy = false;
+    endTurn(text);
+  });
+}
+
+function animateMove(a, b, text, dropOffset = null, forcedPromotion = null) {
+  lastMove = {from:[...a], to:[...b]};
+  busy = true;
+  let token = animationVersion, source = cellAt(a), dest = cellAt(b);
+  let ar = source.getBoundingClientRect(), br = dest.getBoundingClientRect();
+  let g = ghost(board[a[0]][a[1]], ar);
+  source.firstElementChild.style.visibility = 'hidden';
+  let duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : (dropOffset ? 105 : Math.min(280, 165 + Math.hypot(br.left - ar.left, br.top - ar.top) * 0.1));
+  let animation = g.animate([
+    {transform: dropOffset ? 'translate3d(' + dropOffset.x + 'px,' + dropOffset.y + 'px,0)' : 'translate3d(0,0,0)'},
+    {transform: 'translate3d(' + (br.left - ar.left) + 'px,' + (br.top - ar.top) + 'px,0)'}
+  ], {duration, easing:'cubic-bezier(.22,.61,.36,1)', fill:'forwards'});
+
+  animation.finished.then(() => {
+    g.remove();
+    if (token !== animationVersion || ended) return;
+    
+    let moving = board[a[0]][a[1]], taken = board[b[0]][b[1]];
+    let isEnPassant = moving[1] === 'p' && enPassantTarget && b[0] === enPassantTarget[0] && b[1] === enPassantTarget[1] && !taken;
+
+    if (isEnPassant) {
+      let capRow = a[0];
+      taken = board[capRow][b[1]];
+      board[capRow][b[1]] = null;
+    }
+
+    let castleNotation = null;
+    if (moving[1] === 'k' && Math.abs(b[1] - a[1]) === 2) {
+      let row = a[0], rookFromCol = b[1] > a[1] ? 7 : 0, rookToCol = b[1] > a[1] ? 5 : 3;
+      board[row][rookToCol] = board[row][rookFromCol];
+      board[row][rookFromCol] = null;
+      castleNotation = b[1] > a[1] ? '0-0' : '0-0-0';
+    }
+
+    if (moving[1] === 'k') castlingRights[moving[0]].k = false;
+    if (moving[1] === 'r') {
+      if (a[0] === 7 && a[1] === 0) castlingRights.w.r1 = false;
+      if (a[0] === 7 && a[1] === 7) castlingRights.w.r8 = false;
+      if (a[0] === 0 && a[1] === 0) castlingRights.b.r1 = false;
+      if (a[0] === 0 && a[1] === 7) castlingRights.b.r8 = false;
+    }
+    if (b[0] === 7 && b[1] === 0) castlingRights.w.r1 = false;
+    if (b[0] === 7 && b[1] === 7) castlingRights.w.r8 = false;
+    if (b[0] === 0 && b[1] === 0) castlingRights.b.r1 = false;
+    if (b[0] === 0 && b[1] === 7) castlingRights.b.r8 = false;
+
+    if (moving[1] === 'p' && Math.abs(b[0] - a[0]) === 2) {
+      enPassantTarget = [(a[0] + b[0]) / 2, a[1]];
+    } else {
+      enPassantTarget = null;
+    }
+
+    if (moving[1] === 'p' || taken) halfMoveClock = 0;
+    else halfMoveClock++;
+
+    if (taken) {
+      captured[moving[0]].push(glyph[taken]);
+      sfx('capture');
+    } else {
+      sfx('move');
+    }
+
+    moveHistory.push({color: moving[0], from: a, to: b, piece: moving[1], capture: taken, castle: castleNotation, promote: forcedPromotion});
+    board[b[0]][b[1]] = moving;
+    board[a[0]][a[1]] = null;
+    renderHistory();
+    finishMove(a, b, text, forcedPromotion);
+  });
+}
+
+const boardEl = document.getElementById('board');
+
+boardEl.addEventListener('pointermove', e => {
+  lastPointerType = e.pointerType || 'mouse';
+  if (mode === 'short' || mode === 'long') {
+    if (busy || ended || isRestrictedOpponentTurn()) return;
+    let hovered = computeHoveredWall(e.clientX, e.clientY, mode);
+    if (!hovered) {
+      if (previewWall) { previewWall = null; updatePreviewDOM(); }
+      return;
+    }
+    if (previewWall?.key === hovered.key) return;
+    previewWall = hovered;
+    updatePreviewDOM();
+    return;
+  }
+
+  let d = pointerDrag;
+  if (!d) return;
+  d.px = e.clientX; d.py = e.clientY;
+  if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5) {
+    d.moved = true;
+    selected = d.a;
+    render();
+    let cell = cellAt(d.a);
+    d.rect = cell.getBoundingClientRect();
+    d.g = ghost(board[d.a[0]][d.a[1]], d.rect);
+    cell.firstElementChild.style.visibility = 'hidden';
+  }
+  if (d.g && !d.frame) {
+    d.frame = requestAnimationFrame(() => {
+      d.frame = null;
+      if (d.g) d.g.style.transform = 'translate3d(' + (d.px - d.x) + 'px,' + (d.py - d.y) + 'px,0) scale(1.08)';
+    });
+  }
+});
+
+boardEl.addEventListener('pointerleave', e => {
+  if (e.pointerType === 'mouse' && previewWall) {
+    previewWall = null;
+    updatePreviewDOM();
+  }
+});
+
+boardEl.addEventListener('pointerdown', e => {
+  lastPointerType = e.pointerType || 'mouse';
+  if (busy || ended || mode !== 'move' || isRestrictedOpponentTurn() || (e.button !== 0 && e.pointerType === 'mouse')) return;
+  let cell = e.target.closest('.cell');
+  if (!cell) return;
+  let a = [+cell.dataset.r, +cell.dataset.c];
+  if (board[a[0]][a[1]]?.[0] !== turn) return;
+  pointerDrag = {a, x: e.clientX, y: e.clientY, moved: false};
+  try { boardEl.setPointerCapture(e.pointerId); } catch(err) {}
+});
+
+function stopDrag(e, cancel = false) {
+  let d = pointerDrag;
+  if (!d) return;
+  pointerDrag = null;
+  if (d.frame) cancelAnimationFrame(d.frame);
+
+  if (!d.moved) {
+    if (d.g) d.g.remove();
+    suppressClick = true;
+    setTimeout(() => suppressClick = false, 140);
+    if (!cancel) clickCell(d.a[0], d.a[1], e);
+    return;
+  }
+
+  suppressClick = true;
+  setTimeout(() => suppressClick = false, 140);
+  let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest('.cell');
+  if (!cancel && cell) {
+    let b = [+cell.dataset.r, +cell.dataset.c];
+    if (legal(d.a, b)) {
+      if (d.g) d.g.remove();
+      saveUndoState();
+      animateMove(d.a, b, 'Ход сделан.', {x: e.clientX - d.x, y: e.clientY - d.y});
+      return;
+    }
+  }
+
+  if (d.g && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let dx = e.clientX - d.x, dy = e.clientY - d.y;
+    d.g.animate([
+      {transform: `translate3d(${dx}px,${dy}px,0) scale(1.08)`},
+      {transform: 'translate3d(0,0,0) scale(1)'}
+    ], {duration: 140, easing: 'cubic-bezier(.22,.61,.36,1)'}).finished.then(() => {
+      d.g.remove();
+      render();
+    });
+  } else {
+    if (d.g) d.g.remove();
+    render();
+  }
+}
+
+boardEl.addEventListener('pointerup', e => stopDrag(e));
+boardEl.addEventListener('pointercancel', e => stopDrag(e, true));
+
+function finishMove(a, b, text, forcedPromotion = null) {
+  let piece = board[b[0]][b[1]];
+  if (piece?.[1] === 'p' && (b[0] === 0 || b[0] === 7)) {
+    if (forcedPromotion) {
+      board[b[0]][b[1]] = piece[0] + forcedPromotion;
+      if (moveHistory.length) moveHistory[moveHistory.length - 1].promote = forcedPromotion;
+    } else if (versusBot && piece[0] === botSide()) {
+      board[b[0]][b[1]] = piece[0] + 'q';
+      if (moveHistory.length) moveHistory[moveHistory.length - 1].promote = 'q';
+    } else {
+      render();
+      promotionPending = {a, b, text, color: piece[0]};
+      document.getElementById('promotion').showModal();
+      return;
+    }
+  }
+  if (versusOnline && piece?.[0] === playerSide && !forcedPromotion) {
+    sendNet({type: 'move', a, b, promote: null, remTime: remaining[playerSide]});
+  }
+  busy = false;
+  endTurn(text);
+}
+
+document.querySelectorAll('[data-promote]').forEach(button => button.onclick = () => {
+  if (!promotionPending) return;
+  let {a, b, text, color} = promotionPending;
+  let prom = button.dataset.promote;
+  board[b[0]][b[1]] = color + prom;
+  if (moveHistory.length) moveHistory[moveHistory.length - 1].promote = prom;
+  promotionPending = null;
+  document.getElementById('promotion').close();
+  if (versusOnline && color === playerSide) {
+    sendNet({type: 'move', a, b, promote: prom, remTime: remaining[playerSide]});
+  }
+  busy = false;
+  endTurn(text);
+});
+
+document.getElementById('promotion').addEventListener('cancel', e => e.preventDefault());
+
+function wallOrBreakAvailable() {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      for (let o of ['h', 'v']) {
+        for (let t of ['short', 'long']) {
+          if (validateWallPlacement(r, c, o, t, turn).valid) return true;
+        }
+      }
+    }
+  }
+  if (counts.break > 0 && walls.length > 0) {
+    for (let i = 0; i < walls.length; i++) {
+      let w = walls[i];
+      toggleSegmentsInMap([w], 0);
+      let ok = !inCheck(turn);
+      toggleSegmentsInMap([w], 1);
+      if (ok) return true;
+    }
+  }
+  return false;
+}
+
+function isInsufficientMaterial() {
+  let pieces = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      let p = board[r][c];
+      if (p && p[1] !== 'k') pieces.push(p[1]);
+    }
+  }
+  if (pieces.length === 0) return true;
+  if (pieces.length === 1 && (pieces[0] === 'n' || pieces[0] === 'b')) return true;
+  return false;
+}
+
+function resultLabel(winner) {
+  return (versusBot || versusOnline) ? (winner === playerSide ? 'Победа' : 'Поражение') : (winner === 'w' ? 'Победа белых' : 'Победа чёрных');
+}
+
+function checkResult() {
+  if (ended) return;
+  if (isInsufficientMaterial()) {
+    recordGameStats(null, true);
+    finishGame('Ничья', 'Недостаточно фигур для постановки мата.');
+    return;
+  }
+  if (halfMoveClock >= 100) {
+    recordGameStats(null, true);
+    finishGame('Ничья', 'Правило 50 ходов без взятий и движения пешек.');
+    return;
+  }
+  if (generateSortedMoves(turn, false).length > 0) return;
+  if (wallOrBreakAvailable()) return;
+  let check = inCheck(turn);
+  let winner = check ? (turn === 'w' ? 'b' : 'w') : null;
+  recordGameStats(winner, !check);
+  finishGame(
+    check ? resultLabel(winner) : 'Ничья',
+    check ? 'Мат: нет действий, устраняющих шах.' : 'Пат: нет доступных ходов и стен.'
+  );
+}
+
+function finishGame(title, reason) {
+  ended = true;
+  busy = true;
+  clearTimeout(botTimer);
+  clearSavedGame();
+  sfx('end');
+  updateUndoBtn();
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultReason').textContent = reason;
+  document.getElementById('result').showModal();
+}
+
+function tickClock() {
+  let now = performance.now();
+  if (clockEnabled && !ended && !document.getElementById('game').hidden && !document.hidden && !promotionPending) {
+    remaining[turn] = Math.max(0, remaining[turn] - (now - clockStamp) / 1000);
+    if (now - lastClockSave > 2000) {
+      lastClockSave = now;
+      saveActiveGame();
+    }
+    if (remaining[turn] === 0) {
+      if (versusOnline && turn === playerSide) sendNet({type: 'timeout'});
+      let winner = turn === 'w' ? 'b' : 'w';
+      recordGameStats(winner, false);
+      finishGame(resultLabel(winner), 'Время на ход истекло.');
+    }
+  }
+  clockStamp = now;
+  let fmt = v => Math.floor(Math.ceil(v) / 60) + ':' + String(Math.ceil(v) % 60).padStart(2, '0');
+  let cw = document.getElementById('clockW'), cb = document.getElementById('clockB');
+  let clockText = (clockEnabled ? fmt(remaining.w) : '∞') + '|' + (clockEnabled ? fmt(remaining.b) : '∞') + '|' + turn + '|' + ended;
+  if (clockText !== lastClockText) {
+    lastClockText = clockText;
+    cw.querySelector('b').textContent = clockEnabled ? fmt(remaining.w) : '∞';
+    cb.querySelector('b').textContent = clockEnabled ? fmt(remaining.b) : '∞';
+  }
+  cw.classList.toggle('active', turn === 'w' && !ended);
+  cb.classList.toggle('active', turn === 'b' && !ended);
+  cw.classList.toggle('low', clockEnabled && remaining.w <= 30);
+  cb.classList.toggle('low', clockEnabled && remaining.b <= 30);
+  cw.classList.toggle('out', clockEnabled && remaining.w <= 0);
+  cb.classList.toggle('out', clockEnabled && remaining.b <= 0);
+}
+
+document.getElementById('flipBoard').onclick = () => {
+  if (busy || pointerDrag) return;
+  flipped = !flipped;
+  render();
+  saveActiveGame();
+};
+
+document.getElementById('resultRematch').onclick = () => {
+  document.getElementById('result').close();
+  if (versusOnline && onlineConfig) {
+    playerSide = playerSide === 'w' ? 'b' : 'w';
+    sendNet({type: 'rematch'});
+    startOnlineMatch(onlineConfig.arsenal, onlineConfig.timeSec);
+    return;
+  }
+  reset(true);
+  showGame();
+};
+
+document.getElementById('resultMenu').onclick = () => {
+  document.getElementById('result').close();
+  closeNetSession();
+  document.getElementById('game').hidden = true;
+  document.getElementById('menu').hidden = false;
+  document.getElementById('resume').hidden = true;
+};
+
+document.getElementById('menuButton').onclick = () => {
+  if (ended) {
+    closeNetSession();
+    document.getElementById('game').hidden = true;
+    document.getElementById('menu').hidden = false;
+    return;
+  }
+  document.getElementById('exitPause').hidden = versusOnline;
+  document.getElementById('exitDialogText').textContent = versusOnline
+    ? 'В сетевой игре выход из партии засчитывается как поражение.'
+    : 'Партия сохранена. Вы можете выйти в меню на паузу или сдаться.';
+  document.getElementById('exitConfirm').showModal();
+};
+
+document.getElementById('exitStay').onclick = () => document.getElementById('exitConfirm').close();
+
+document.getElementById('exitPause').onclick = () => {
+  if (versusOnline) return;
+  document.getElementById('exitConfirm').close();
+  clearTimeout(botTimer);
+  saveActiveGame();
+  document.getElementById('game').hidden = true;
+  document.getElementById('menu').hidden = false;
+  document.getElementById('resume').hidden = false;
+};
+
+document.getElementById('exitConfirmButton').onclick = () => {
+  document.getElementById('exitConfirm').close();
+  if (versusOnline) {
+    sendNet({type: 'resign'});
+    recordGameStats(botSide(), false);
+    finishGame('Поражение', 'Вы сдались.');
+  } else if (versusBot) {
+    recordGameStats(botSide(), false);
+    finishGame('Поражение', 'Вы сдались.');
+  } else {
+    let winner = turn === 'w' ? 'b' : 'w';
+    recordGameStats(winner, false);
+    finishGame(resultLabel(winner), (turn === 'w' ? 'Белые' : 'Чёрные') + ' сдались.');
+  }
+};
+
+initBoardDOM();
+loadStatsAndPrefs();
+reset(false);
+if (hasSavedGameInStorage()) {
+  document.getElementById('resume').hidden = false;
+}
+setInterval(tickClock, 100);
+syncControls();
+</script></body></html>
